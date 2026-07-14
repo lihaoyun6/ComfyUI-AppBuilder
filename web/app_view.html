@@ -15,6 +15,7 @@
             --text: #FFFFFF;
             --title: #AAA;
             --border: #333333;
+            --border-neg: #D8D8D8;
         }
         
         /* 🌓 浅色主题（点击按钮时激活） */
@@ -28,6 +29,7 @@
             --text: #555555;
             --title: #000000;
             --border: #D8D8D8;
+            --border-neg: #333333;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
@@ -90,7 +92,7 @@
         .status-badge {
             position: absolute; top: 10px; right: 10px; background: var(--bg-badge);
             padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: #fff; z-index: 10;
-            border: 1px solid var(--border); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+            border: 1px solid var(--border-neg); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
         }
 
         /* 拖拽调节器 */
@@ -154,21 +156,21 @@
             width: 3rem; height: 36px; cursor: pointer; font-size: 18px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; user-select: none;
         }
-        .btn-numeric-adjust:active { background: #2a2a2a; }
+        .btn-numeric-adjust:active { background: var(--border); }
 
         /* 双段开关式 BOOLEAN */
         .segmented-toggle {
-            width: 100%; height: 36px; background: #111; border: 1px solid var(--border);
+            width: 100%; height: 36px; background: var(--panel-bg); border: 1px solid var(--border);
             border-radius: 8px; position: relative; cursor: pointer; overflow: hidden;
         }
         .toggle-track { display: flex; height: 100%; position: relative; z-index: 1; }
         .toggle-label-half {
             flex: 1; display: flex; align-items: center; justify-content: center; user-select: none;
-            font-size: 13px; font-weight: bold; color: #777; transition: color 0.2s; z-index: 2; 
+            font-size: 13px; font-weight: bold; color: var(--text); transition: color 0.2s; z-index: 2; 
         }
         .toggle-thumb {
             position: absolute; top: 2px; left: 2px; height: calc(100% - 4px);
-            width: calc(50% - 4px); background: #333; border-radius: 6px;
+            width: calc(50% - 4px); background: var(--border); border-radius: 6px;
             transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s; z-index: 1;
         }
         input[type="checkbox"]:checked + .toggle-track .toggle-thumb {
@@ -183,11 +185,11 @@
             background: var(--panel-bg); border: 1px solid var(--border); color: #fff; border-radius: 8px; width: 3rem;
             flex-shrink: 0; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
         }
-        .btn-edit-multiline:active { background: #2a2a2a; }
+        .btn-edit-multiline:active { background: var(--border); }
         
         /* 👇 新增：让多行编辑容器内的输入框自适应剩余空间，不再霸道地占用 100% 宽度 */
         .input-with-button input, .input-with-button textarea { flex: 1; width: auto; }
-        .btn-edit-multiline:active { background: #2a2a2a; }
+        .btn-edit-multiline:active { background: var(--border); }
         
         /* 👇 新增控制行容器，让上传框和切换预览按钮横向并排 */
         .uploader-control-row { display: flex; gap: 6px; width: 100%; }
@@ -254,7 +256,8 @@
         /* 模态浮层基类 */
         .modal {
             display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.85); justify-content: center; align-items: center; padding: 16px;
+            background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center; padding: 16px;
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
         }
         .modal-content {
             background-color: var(--panel-bg); border: 1px solid var(--border); border-radius: 12px;
