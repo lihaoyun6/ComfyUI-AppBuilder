@@ -22,7 +22,7 @@
         /* 🌓 浅色主题（点击按钮时激活） */
         :root.light-theme {
             color-scheme: light;
-            --bg: #F5F5F5;
+            --bg: #e6e6e6;
             --bg-color: #F1F1F1;
             --bg-badge: rgba(128,128,128,0.4);
             --panel-bg: #FFFFFF;
@@ -42,8 +42,21 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color); color: var(--text);
+            background-color: var(--bg); color: var(--text);
             display: flex; flex-direction: column;  height: 100dvh; overflow: hidden; 
+            /* 👈【核心新增】：全局禁用文本框选与长按手势（彻底解决长按击穿Bug） */
+            -webkit-user-select: none; /* iOS Safari */
+            -moz-user-select: none;    /* Firefox */
+            -ms-user-select: none;     /* IE10+ */
+            user-select: none;         /* Standard */
+            -webkit-touch-callout: none; /* 彻底杜绝全局无关元素的触控反馈 */
+        }
+        
+        /* 👈【核心新增】：仅限需要输入文字的“真实控件”和“灯箱大图”予以白名单放行，恢复原生菜单 */
+        input, select, textarea, #lightbox-img {
+            -webkit-user-select: auto !important;
+            user-select: auto !important;
+            -webkit-touch-callout: default !important; /* 👈 允许 iOS 弹出原生打字菜单与大图保存菜单 */
         }
 
         /* 👈 极致优化：屏蔽手机端双击缩放行为并消除点击延时 */
@@ -84,11 +97,12 @@
             display: flex; overflow-x: auto; padding: 8px 16px; gap: 8px; height: 70px;
             background-color: var(--panel-bg); border-top: 1px solid var(--border);
             border-top-left-radius: 18px; border-top-right-radius: 18px;
+            overflow-y: hidden; touch-action: pan-x;
         }
         .gallery-container::-webkit-scrollbar { display: none; }
         .gallery-item {
             width: 60px; height: 60px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
-            border: 2px solid var(--border); cursor: pointer;
+            border: 2px solid var(--border); cursor: pointer; user-select: none; -webkit-user-drag: none;
         }
 
         .status-badge {
@@ -100,8 +114,8 @@
         /* 拖拽调节器 */
         .resizer {
             height: 18px; width: 100%; cursor: row-resize; flex-shrink: 0; border-top: 2px solid var(--border);
-            position: relative; z-index: 100; user-select: none; transition: background 0.15s;
-            border-top-left-radius: 18px; border-top-right-radius: 18px;
+            position: relative; z-index: 100; user-select: none;
+            border-top-left-radius: 18px; border-top-right-radius: 18px; background-color: var(--bg-color);
         }
         .resizer::after {
             content: ''; position: absolute; left: 50%; top: 8px; transform: translate(-50%, -50%);
@@ -114,12 +128,9 @@
         }
 
         /* 紧凑参数区：由于画廊手机端在最下侧，Padding只需要 150px（按钮+画廊） */
-        .controls-section { 
-            flex: 1;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; 
-            padding: 12px 16px; 
-            padding-bottom: 150px; 
+        .controls-section {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 12px 16px; padding-bottom: 150px; background-color: var(--bg-color);
         }
         .controls-section::-webkit-scrollbar { display: none; }
         .control-group { margin-bottom: 10px;}
@@ -277,7 +288,7 @@
         .bottom-action-bar {
             position: absolute; bottom: 0; left: 0; width: 100%; background-color: var(--panel-bg);
             border-top: 1px solid var(--border); z-index: 100; display: flex; flex-direction: column;
-            padding-bottom: env(safe-area-inset-bottom); border-top-left-radius: 18px; border-top-right-radius: 18px;
+            padding-bottom: env(safe-area-inset-bottom); border-top-left-radius: 19px; border-top-right-radius: 19px;
         }
         
         .button-group { display: flex; gap: 10px; padding: 8px 16px 10px 16px; }
@@ -290,12 +301,32 @@
         .btn:active { opacity: 0.8; transform: scale(0.98); }
         
         /* 👇 修改：开始生成按钮。采用蓝色（#3E8AE2），增加鼠标经过高光 */
-        .btn-run { background-color: #3E8AE2; flex: 3; }
-        .btn-run:hover { background-color: #559ceb; }
+        .btn-run-wrapper { position: relative; flex: 3; display: flex; }
+        .btn-run { width: 100%; background-color: #3E8AE2; }
+        .btn-run:hover { filter: brightness(1.15); }
+        .queue-badge {
+            display: none; 
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            background-color: #F44336 !important;
+            color: #FFFFFF !important;
+            font-size: 11px;
+            font-weight: bold;
+            height: 20px;
+            min-width: 20px;
+            padding: 0 5px;
+            border-radius: 10px;
+            border: 1.5px solid var(--panel-bg);
+            align-items: center; 
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none; 
+        }
         
         /* 👇 修改：停止按钮。采用深红色（#A6433F），宽度为 60px 的紧凑正方形，增加鼠标经过高光 */
         .btn-stop { background-color: #C43A20; flex: 1; }
-        .btn-stop:hover { background-color: #be534e; }
+        .btn-stop:hover { filter: brightness(1.15); }
         
         /* 👇【新增：SEED 专属控件整体包装器与下拉动作菜单样式】 */
         .seed-wrapper { display: flex; flex-direction: column; gap: 6px; width: 100%; }
@@ -304,7 +335,7 @@
             align-items: center; gap: 8px; width: 100%; margin-top: 4px;
         }
         .seed-action-label { font-size: 13px; color: var(--title); white-space: nowrap;  user-select: none; }
-        .seed-action-select { flex: 1; min-height: 32px; cursor: pointer; outline: none; text-align: right; text-align-last: right; }
+        .seed-action-select { flex: 1; min-height: 36px; cursor: pointer; outline: none; text-align: right; text-align-last: right; }
         .seed-action-select:focus { border-color: var(--primary); }
 
         /* 模态浮层基类 */
@@ -330,7 +361,6 @@
         .modal-btn-cancel { background-color: var(--border); color: var(--text); }
         .modal-btn-save { background-color: var(--primary); color: #fff; }
 
-        /* 灯箱组件 */
         .lightbox-modal {
             display: none; position: fixed; z-index: 11000; left: 0; top: 0; width: 100%; height: 100%;
             background-color: rgba(0,0,0,0.8); justify-content: center; align-items: center;
@@ -339,18 +369,16 @@
         .lightbox-content { max-width: 95dvw; max-height: 90dvh; object-fit: contain; animation: zoom 0.15s ease-out; }
         @keyframes zoom { from {transform: scale(0.95); opacity: 0;} to {transform: scale(1); opacity: 1;} }
         .lightbox-close { position: absolute; top: 20px; right: 25px; color: #fff; font-size: 35px; font-weight: bold; cursor: pointer; user-select: none; z-index: 11300; }
-
-        /* 灯箱翻页箭头 */
         .lightbox-arrow {
             position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.55);
-            border: none; color: #fff; font-size: 28px; width: 48px; height: 48px; border-radius: 50%;
+            border: none; color: #fff; font-size: 30px; width: 48px; height: 48px; border-radius: 50%;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            user-select: none; z-index: 11200; transition: background 0.2s, transform 0.1s;
+            z-index: 11200; transition: background 0.2s, transform 0.1s; padding-bottom: 4px;
         }
         .lightbox-arrow:hover { background: var(--primary); }
         .lightbox-arrow:active { transform: translateY(-50%) scale(0.9); }
-        .lightbox-arrow-left { left: 20px; }
-        .lightbox-arrow-right { right: 20px; }
+        .lightbox-arrow-left { left: 20px; padding-right: 3px; }
+        .lightbox-arrow-right { right: 20px; padding-left: 3px; }
         
         .number-input::-webkit-outer-spin-button, .number-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .number-input[type=number] { -moz-appearance: textfield; }
@@ -386,7 +414,7 @@
 
             /* 👈 吸收GPT精髓：PC参数区引入 flex 0 0 / min-width 约束防止偏斜 */
             .right-panel { 
-                flex: 0 0 400px; width: 400px; min-width: 250px;
+                flex: 0 0 400px; width: 400px; min-width: 300px;
                 display: flex; flex-direction: column; height: 100vh; position: relative;
             }
             /* 画廊移到左下侧了，PC端的参数区底部高度只需要 80px 容纳按钮即可 */
@@ -426,7 +454,10 @@
         <div class="bottom-action-bar">
             <div class="button-group">
                 <input type="number" id="input-batch-count" class="number-input btn-batch-input" value="1" min="1" max="999" title="Batch Count" placeholder="1">
-                <button class="btn btn-run" id="btn-run" data-i18n="button_run">▷ Run</button>
+                <div class="btn-run-wrapper">
+                    <span class="queue-badge" id="queue-badge"></span>
+                    <button class="btn btn-run" id="btn-run" data-i18n="button_run">▷ Run</button>
+                </div>
                 <button class="btn btn-stop" id="btn-stop">✘</button>
             </div>
         </div>
@@ -516,6 +547,19 @@
             });
         }
         
+        function updateQueueBadge(count) {
+            const badge = document.getElementById('queue-badge');
+            if (!badge) return;
+
+            const num = parseInt(count) || 0;
+            if (num > 0) {
+                badge.innerText = num;
+                badge.style.display = 'flex'; // 👈 唤醒显示，填入数字并撑开内心
+            } else {
+                badge.style.display = 'none'; // 归零隐藏
+            }
+        }
+        
         // 统一消息接收
         window.addEventListener('message', (event) => {
             const msg = event.data;
@@ -523,9 +567,7 @@
             
             const statusText = document.getElementById('status-text');
             if (msg.type === 'b_preview') {
-                if (msg.blob) {
-                    document.getElementById('main-preview').src = URL.createObjectURL(msg.blob);
-                }
+                if (msg.blob) document.getElementById('main-preview').src = URL.createObjectURL(msg.blob);
             }
             else if (msg.type === 'executed') {
                 const data = msg.detail;
@@ -553,6 +595,8 @@
                 statusText.innerText = t("label_generating", "Generating...");
                 statusText.style.color = "var(--primary)";
                 document.getElementById('progress-bar').style.width = '0%'; // 重置进度
+                document.getElementById('btn-run').style.backgroundColor = 'var(--primary)';
+                document.getElementById('btn-run').innerText = t("button_running", "▷ Running...");
                 syncParentValuesToAppView();
             }
             else if (msg.type === 'progress') {
@@ -563,26 +607,37 @@
                 }
             }
             else if (msg.type === 'status') {
-                if (msg.detail && msg.detail.exec_info && msg.detail.exec_info.queue_remaining === 0) {
-                    setTimeout(() => {
-                        statusText.innerText = t("label_ready", "Ready");
-                        statusText.style.color = "var(--title)";
-                    }, 300);
-                    document.getElementById('progress-bar').style.width = '0%'; // 清空进度
-                    syncParentValuesToAppView();
+                if (msg.detail && msg.detail.exec_info) {
+                    const remaining = msg.detail.exec_info.queue_remaining;
+                    updateQueueBadge(remaining);
+                    if (msg.detail.exec_info.queue_remaining === 0) {
+                        setTimeout(() => {
+                            statusText.innerText = t("label_ready", "Ready");
+                            statusText.style.color = "var(--title)";
+                        }, 300);
+                        document.getElementById('progress-bar').style.width = '0%'; // 清空进度
+                        document.getElementById('btn-run').style.backgroundColor = '#3E8AE2';
+                        document.getElementById('btn-run').innerText = t("button_run", "▷ Run");
+                        syncParentValuesToAppView();
+                    }
                 }
             }
             else if (msg.type === 'execution_interrupted') {
                 statusText.innerText = t("label_interrupted", "Interrupted");
                 statusText.style.color = "#f44336";
                 document.getElementById('progress-bar').style.width = '0%'; // 清空进度
+                document.getElementById('btn-run').style.backgroundColor = '#3E8AE2';
+                document.getElementById('btn-run').innerText = t("button_run", "▷ Run");
+                updateQueueBadge(0);
             }
             else if (msg.type === 'execution_error') {
                 const data = msg.detail;
                 statusText.innerText = "Error";
                 statusText.style.color = "#f44336"; // 将状态文字设为红色警告色
                 document.getElementById('progress-bar').style.width = '0%'; // 重置进度条
-                
+                document.getElementById('btn-run').style.backgroundColor = '#3E8AE2';
+                document.getElementById('btn-run').innerText = t("button_run", "▷ Run");
+                updateQueueBadge(0);
                 if (data) {
                     const errorMsg = data.exception_message || "Unknown error";
                     const nodeType = data.node_type || "Unknown Node";
@@ -597,7 +652,9 @@
                 statusText.innerText = t("label_error", "Error");
                 statusText.style.color = "#f44336";
                 document.getElementById('progress-bar').style.width = '0%';
-                
+                document.getElementById('btn-run').style.backgroundColor = '#3E8AE2';
+                document.getElementById('btn-run').innerText = t("button_run", "▷ Run");
+                updateQueueBadge(0);
                 alert(`⚠️ ComfyUI Queue Error\n\n${msg.message}`);
             }
         });
@@ -719,33 +776,34 @@
             }
         }
         
-        // 👇【核心新增】：主动拉取主界面节点最新的实际参数，并反向刷新写回到 AppView 网页表单上
+        // 👇【核心修改】：改造为 SEED 专属定向同步（在生成完毕后，有且仅有种子参数才允许被反向回写，绝对不碰其他参数草稿）
         function syncParentValuesToAppView() {
             if (!window.comfyApp || !sourceNodeId) return;
             const node = window.comfyApp.graph.getNodeById(sourceNodeId);
             if (!node) return;
             
             for (const widget of node.widgets) {
-                const inputEl = document.getElementById(`input_${widget.name}`);
-                if (inputEl) {
-                    if (inputEl.type === 'checkbox') {
-                        inputEl.checked = widget.value;
-                    } else {
-                        inputEl.value = widget.value;
-                    }
-                    // 派发事件让数值气泡和关联预览即时更新
-                    inputEl.dispatchEvent(new Event('change'));
-                    inputEl.dispatchEvent(new Event('input'));
-                }
+                // 1. 判断当前是否为 SEED（种子）控件
+                const isSeedWidget = !!document.getElementById(`input_action_${widget.name}`);
                 
-                // 处理伴生的 control_after_generate 动作下拉框的刷新
-                if (widget.name === 'control_after_generate') {
-                    const idx = node.widgets.indexOf(widget);
-                    if (idx > 0) {
-                        const seedWidget = node.widgets[idx - 1];
-                        const actionSelect = document.getElementById(`input_action_${seedWidget.name}`);
-                        if (actionSelect) {
-                            actionSelect.value = widget.value;
+                if (isSeedWidget) {
+                    const inputEl = document.getElementById(`input_${widget.name}`);
+                    if (inputEl) {
+                        // 仅同步并更新种子数值
+                        inputEl.value = widget.value;
+                        inputEl.dispatchEvent(new Event('change'));
+                        inputEl.dispatchEvent(new Event('input'));
+                    }
+                    
+                    // 2. 刷新其伴生的 control_after_generate 下拉菜单状态
+                    if (widget.name === 'control_after_generate') {
+                        const idx = node.widgets.indexOf(widget);
+                        if (idx > 0) {
+                            const seedWidget = node.widgets[idx - 1];
+                            const actionSelect = document.getElementById(`input_action_${seedWidget.name}`);
+                            if (actionSelect) {
+                                actionSelect.value = widget.value;
+                            }
                         }
                     }
                 }
@@ -1214,7 +1272,7 @@
                         
                         const actionLabel = document.createElement('span');
                         actionLabel.className = 'seed-action-label';
-                        actionLabel.innerText = t("label_seed_control", "Control After Generate");
+                        actionLabel.innerText = t("label_seed_control", "Seed Control");
                         
                         const select = document.createElement('select');
                         select.className = 'seed-action-select';
@@ -1226,6 +1284,45 @@
                             el.innerText = opt;
                             select.appendChild(el);
                         });
+                        
+                        const btnReuse = document.createElement('button');
+                        btnReuse.type = 'button';
+                        btnReuse.className = 'btn-numeric-adjust';
+                        btnReuse.innerText = '♻️';
+                        btnReuse.title = t("lastSeed_desc", 'Reuse Last Seed');
+                        btnReuse.onclick = (e) => {
+                            e.stopPropagation();
+                            // 从全局缓存中抓回上一次在前端生成过的种子值
+                            const lastVal = window._lastSeeds ? window._lastSeeds[key] : null;
+                            if (lastVal) {
+                                input.value = lastVal;
+                                input.dispatchEvent(new Event('change'));
+                                
+                                // 自动将后续动作锁定为 fixed
+                                select.value = "fixed";
+                                select.dispatchEvent(new Event('change'));
+                            } /*else {
+                                alert("No previous seed recorded in this session yet!");
+                            }*/
+                        };
+                        
+                        // 👈【新增】：随机骰子按钮 (🎲)
+                        const btnRand = document.createElement('button');
+                        btnRand.type = 'button';
+                        btnRand.className = 'btn-numeric-adjust';
+                        btnRand.innerText = '🎲';
+                        btnRand.title = t("randomSeed_desc", 'Randomize Seed');
+                        btnRand.onclick = (e) => {
+                            e.stopPropagation();
+                            const randVal = Math.floor(Math.random() * 1125899906842624).toString();
+                            input.value = randVal;
+                            input.dispatchEvent(new Event('change'));
+                            
+                            // 自动将后续动作锁定为 fixed (锁定该随机种子进行微调)
+                            select.value = "fixed";
+                            select.dispatchEvent(new Event('change'));
+                        };
+                        
                         // 自动计算提取 ComfyUI 在 SEED 控件后追加的 control_after_generate 伴生控件
                         const seedWidgetIndex = parentNode ? parentNode.widgets.indexOf(parentWidget) : -1;
                         const companionWidget = (seedWidgetIndex !== -1) ? parentNode.widgets[seedWidgetIndex + 1] : null;
@@ -1241,6 +1338,8 @@
                         });
                         actionRow.appendChild(actionLabel);
                         actionRow.appendChild(select);
+                        actionRow.appendChild(btnReuse);
+                        actionRow.appendChild(btnRand);
                         seedContainer.appendChild(actionRow);
                         
                         group.appendChild(seedContainer);
@@ -1463,6 +1562,19 @@
             const node = window.comfyApp.graph.getNodeById(sourceNodeId);
             if (!node) return alert(t("node_notfound", "Original node not found!"));
             
+            const seedActionSelects = document.querySelectorAll('.seed-action-select');
+            seedActionSelects.forEach(select => {
+                if (select.value === 'randomize') {
+                    const seedKey = select.id.replace('input_action_', '');
+                    const seedInput = document.getElementById(`input_${seedKey}`);
+                    if (seedInput) {
+                        const newSeed = Math.floor(Math.random() * 1125899906842624).toString()
+                        seedInput.value = newSeed;
+                        seedInput.dispatchEvent(new Event('change')); // 派发事件同步给主界面
+                    }
+                }
+            });
+            
             for (const widget of node.widgets) {
                 const inputEl = document.getElementById(`input_${widget.name}`);
                 if (inputEl) {
@@ -1478,6 +1590,11 @@
                     if (widget.value !== newValue) {
                         widget.value = newValue;
                         if (widget.callback) widget.callback(newValue); // 执行原生回调保障工作流感知状态变动
+                    }
+                    
+                    if (document.getElementById(`input_action_${widget.name}`)) {
+                        window._lastSeeds = window._lastSeeds || {};
+                        window._lastSeeds[widget.name] = inputEl.value;
                     }
                 }
             }
