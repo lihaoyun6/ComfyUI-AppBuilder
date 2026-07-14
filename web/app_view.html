@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ComfyUI - Mobile App View</title>
+    <title>PowerPanel AppView</title>
     <style>
         :root {
             color-scheme: dark;
             --bg: #000000;
             --bg-color: #121212;
-            --bg-badge: rgba(255,255,255,0.2);
+            --bg-badge: rgba(255,255,255,0.3);
             --panel-bg: #202020;
             --primary: #4CAF50;
             --second: #418a44;
-            --danger: #777777;
             --text: #FFFFFF;
-            --title: #AAA;
+            --title: #AAAAAA;
             --border: #333333;
             --border-neg: #D8D8D8;
         }
@@ -28,10 +27,9 @@
             --bg-badge: rgba(128,128,128,0.4);
             --panel-bg: #FFFFFF;
             --primary: #4CAF50;
-            --second: #7acb6d;
-            --danger: #555555;
-            --text: #555555;
-            --title: #000000;
+            --second: #5acc5e;
+            --text: #000000;
+            --title: #555555;
             --border: #D8D8D8;
             --border-neg: #333333;
         }
@@ -94,9 +92,9 @@
         }
 
         .status-badge {
-            position: absolute; top: 10px; right: 10px; background: var(--bg-badge);
-            padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: #fff; z-index: 10;
-            border: 1px solid var(--border-neg); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+            position: absolute; top: 10px; right: 10px; background: var(--border);
+            padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: var(--title); z-index: 10;
+            border: 1px solid var(--title); text-shadow: 0px 1px 0px var(--panel-bg);
         }
 
         /* 拖拽调节器 */
@@ -107,7 +105,7 @@
         }
         .resizer::after {
             content: ''; position: absolute; left: 50%; top: 8px; transform: translate(-50%, -50%);
-            width: 100px; height: 4px; background: var(--danger); border-radius: 2px;
+            width: 100px; height: 4px; background: var(--title); border-radius: 2px;
         }
 
         /* 右侧面板 */
@@ -208,7 +206,7 @@
         .numeric-input-wrapper { display: flex; align-items: center; width: 100%; gap: 6px; }
         .numeric-input-wrapper input { flex: 1; text-align: center; }
         .btn-numeric-adjust {
-            background: var(--panel-bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px;
+            background: var(--panel-bg); border: 1px solid var(--border); color: var(--title); border-radius: 8px;
             width: 3rem; height: 36px; cursor: pointer; font-size: 18px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; user-select: none;
         }
@@ -361,7 +359,11 @@
             flex: 0.5; color: #fff;  text-align: center; outline: none; touch-action: manipulation;
         }
         
-        .theme-toggle-btn { position: absolute; top: 10px; left: 10px; padding: 3px 10px; right: auto; }
+        .theme-toggle-btn {
+            position: absolute; top: 10px; left: 10px; padding: 3px 10px; right: auto; cursor: pointer;
+            text-shadow: 0px 0px 1px var(--text) !important; transition: transform 0.2s ease;
+        }
+        .theme-toggle-btn:hover { transform: scale(1.1); }
 
         /* 电脑端响应式重写 */
         @media (min-width: 768px) {
@@ -380,7 +382,7 @@
                 border-bottom: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
             }
             .resizer::after { width: 3px; height: 50px; left: 50%; top: 50%; }
-            .resizer:hover, .resizer.dragging { background: var(--primary); }
+            .resizer:hover, .resizer.dragging { background: var(--border); }
 
             /* 👈 吸收GPT精髓：PC参数区引入 flex 0 0 / min-width 约束防止偏斜 */
             .right-panel { 
@@ -405,8 +407,8 @@
     <!-- 视图面板：包揽大图预览 -->
     <div class="viewer-container">
         <div class="preview-section">
-            <button class="theme-toggle-btn status-badge" id="theme-toggle" title="Toggle Theme">🌓</button>
-            <span class="status-badge" id="status-text" data-i18n="lable_ready">Ready</span>
+            <button class="theme-toggle-btn status-badge" id="theme-toggle">🌓</button>
+            <span class="status-badge" id="status-text" data-i18n="label_ready">Ready</span>
             <img id="main-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23555'/><text x='50%' y='50%' fill='%23999' font-size='16' text-anchor='middle' alignment-baseline='middle'>No Media</text></svg>">
         </div>
         <!-- 结果历史画廊挂载点（该容器在 JS 中会随分辨率动态物理“迁徙”） -->
@@ -418,7 +420,7 @@
 
     <div class="right-panel">
         <div class="controls-section" id="dynamic-form">
-            <p style="color:#aaa; text-align:center; margin-top:20px;">Loading UI...</p>
+            <p style="color:#aaa; text-align:center; margin-top:20px;" data-i18n="loading_ui">Loading UI...</p>
         </div>
 
         <div class="bottom-action-bar">
@@ -564,7 +566,7 @@
                 if (msg.detail && msg.detail.exec_info && msg.detail.exec_info.queue_remaining === 0) {
                     setTimeout(() => {
                         statusText.innerText = t("label_ready", "Ready");
-                        statusText.style.color = "#fff";
+                        statusText.style.color = "var(--title)";
                     }, 300);
                     document.getElementById('progress-bar').style.width = '0%'; // 清空进度
                     syncParentValuesToAppView();
@@ -603,6 +605,7 @@
         // 页面初始化
         window.addEventListener('DOMContentLoaded', async () => {
             await loadI18n();
+            
             const urlParams = new URLSearchParams(window.location.search);
             const nodeId = urlParams.get('nodeId');
             
@@ -635,10 +638,19 @@
                         const isLight = document.documentElement.classList.toggle('light-theme');
                         localStorage.setItem('appview_theme', isLight ? 'light' : 'dark');
                     };
+                } else {
+                    document.getElementById('dynamic-form').innerHTML = 
+                    `<div style="text-align:center; padding: 20px; color:#f44336; line-height: 1.6;">
+                            <p style="font-size: 24px; margin-bottom:10px;">⚠️</p>
+                            <p style="font-size: 14px; font-weight:bold;">${t('node_lost_alert', 'The original workflow was closed or not activated!')}</p>
+                        </div>`;
                 }
             } else {
                 document.getElementById('dynamic-form').innerHTML = 
-                `<p style="color:#f44336; text-align:center; margin-top:20px;">${t("connection_lost", "Connection lost. Please reopen from the original panel.")}</p>`;
+                `<div style="text-align:center; padding: 20px; color:#f44336; line-height: 1.6;">
+                        <p style="font-size: 24px; margin-bottom:10px;">⚠️</p>
+                        <p style="font-size: 14px; font-weight:bold;">${t('connection_lost', 'Connection lost! Please reopen from the original panel.')}</p>
+                    </div>`;
             }
         });
         

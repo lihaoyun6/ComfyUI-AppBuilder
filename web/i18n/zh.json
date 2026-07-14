@@ -68,7 +68,7 @@
   "invalid_json_alert": "JSON 格式不正确！请修正后再试。错误信息：\n{0}",
   "button_run": "▷ 运行",
   "label_generating": "生成中...",
-  "lable_ready": "已就绪",
+  "label_ready": "已就绪",
   "label_done": "已完成",
   "label_error": "错误",
   "label_uploading": "正在上传...",
@@ -83,11 +83,13 @@
   "label_true": "是",
   "label_off": "关",
   "label_false": "否",
-  "connection_lost": "连接已丢失! 请使用参数面板节点重新打开此页面.",
+  "connection_lost": "连接丢失! 请使用参数面板节点重新打开此页面.",
+  "node_lost_alert": "通信失败! 源工作流未激活或已被关闭.",
   "lost_connection": "与 ComfyUI 失去连接!",
-  "node_notfound": "无法匹配参数面板节点!",
+  "node_notfound": "无法连接到参数面板节点!",
   "label_cancel": "取消",
   "label_save": "保存",
   "label_editor": "编辑文本",
-  "label_edit": "正在编辑: {0}"
+  "label_edit": "正在编辑: {0}",
+  "loading_ui": "正在加载..."
 }
