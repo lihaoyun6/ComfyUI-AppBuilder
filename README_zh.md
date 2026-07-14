@@ -14,7 +14,7 @@ git clone https://github.com/lihaoyun6/ComfyUI-PowerPanel.git
 ```
 
 ## 使用方法 
-<img width="1696" height="946" alt="Loading gif..." src="https://github.com/user-attachments/assets/87de9479-4d8c-4070-b7d6-5d1bee23b5dc" />
+https://github.com/user-attachments/assets/94b4cf52-56a1-454e-af9a-cd5a23c94566  
 
 ## 致谢
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI) @comfyanonymous  
