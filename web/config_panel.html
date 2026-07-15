@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>🎛️ Configure Parameter Panel</title>
+    <title>Configure Parameter Panel</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -210,7 +210,7 @@
 
     <!-- 顶部 -->
     <div class="config-header">
-        <h2 data-i18n="config_title">⚙️ Configure Parameter Panel</h2>
+        <h2 data-i18n="config_title">🎛️ Configure Parameter Panel</h2>
         <span data-i18n="max_limit" style="font-size: 12px; color: #666;">Supports up to 32 controls</span>
     </div>
 
@@ -448,11 +448,13 @@
                     </div>
                 `;
                 card.appendChild(header);
-
+                
                 const grid = document.createElement('div');
                 grid.className = 'card-form-grid';
-
-                grid.innerHTML += `
+                
+                const type = item.type;
+                if (type !== "PREVIEWER") {
+                    grid.innerHTML += `
                     <div class="form-item">
                         <label>${t('param_key', 'Parameter Key (Unique)')}</label>
                         <input type="text" class="input-key" value="${item.key}" placeholder="e.g. seed_value">
@@ -465,9 +467,9 @@
                         <label>${t('tooltip', 'Tooltip')}</label>
                         <input type="text" class="input-tooltip" value="${item.params.tooltip || ''}" placeholder="e.g. Seeds for generation">
                     </div>
-                `;
+                    `;
+                }
 
-                const type = item.type;
                 if (type === "INT" || type === "FLOAT") {
                     grid.innerHTML += `
                         <div class="form-item">
@@ -707,56 +709,81 @@
             renderCards();
         }
 
-        // 打包当前表单数值到状态机中
+        // 👈【核心修复】：打包表单数值到状态机（加入虚拟控件拦截与全量可选链防崩溃保护）
         function packCurrentInputToState() {
             const cards = document.querySelectorAll('.config-card');
-            configList = Array.from(cards).map(card => {
-                const key = card.querySelector('.input-key').value.trim();
+            configList = Array.from(cards).map((card, idx) => {
                 const type = card.getAttribute('data-type');
-                const params = {
-                    type: type,
-                    name: card.querySelector('.input-name').value.trim(),
-                    tooltip: card.querySelector('.input-tooltip').value.trim()
-                };
+                
+                // 1. 👈 如果是虚拟控件 PREVIEWER，它没有输入框，直接原样返回固定的安全结构
+                if (type === "PREVIEWER") {
+                    return { 
+                        key: "live_preview_ctrl", 
+                        type: "PREVIEWER", 
+                        params: { type: "PREVIEWER", name: "LIVE PREVIEW", tooltip: "" } 
+                    };
+                }
 
+                // 2. 安全读取公用基础字段（采用 ?. 安全链，找不到就为空，绝不报错）
+                const keyInput = card.querySelector('.input-key');
+                const nameInput = card.querySelector('.input-name');
+                const tooltipInput = card.querySelector('.input-tooltip');
+
+                const key = keyInput ? keyInput.value.trim() : `control_${idx}`;
+                
+                // 3. 提取历史参数作为底层继承基础
+                const oldParams = (configList[idx] && configList[idx].params) ? configList[idx].params : {};
+                const params = { ...oldParams };
+
+                // 4. 用 UI 上的最新值覆盖
+                params.type = type;
+                params.name = nameInput ? nameInput.value.trim() : "";
+                params.tooltip = tooltipInput ? tooltipInput.value.trim() : "";
+
+                // 根据类型安全读取专属字段
                 if (type === "INT" || type === "FLOAT") {
-                    params.min = Number(card.querySelector('.input-min').value);
-                    params.max = Number(card.querySelector('.input-max').value);
-                    params.step = Number(card.querySelector('.input-step').value);
-                    params.default = Number(card.querySelector('.input-default').value);
-                    params.display = card.querySelector('.input-display').value;
+                    params.min = Number(card.querySelector('.input-min')?.value || 0);
+                    params.max = Number(card.querySelector('.input-max')?.value || 100);
+                    params.step = Number(card.querySelector('.input-step')?.value || 1);
+                    params.default = Number(card.querySelector('.input-default')?.value || 0);
+                    params.display = card.querySelector('.input-display')?.value || "number";
                     if (type === "FLOAT") {
-                        params.precision = Number(card.querySelector('.input-precision').value);
+                        params.precision = Number(card.querySelector('.input-precision')?.value || 3);
                     }
-                //} else if (type === "SEED") {
-                //    params.default = Number(card.querySelector('.input-default').value);
+                } else if (type === "SEED") {
+                    params.default = Number(card.querySelector('.input-default')?.value || 0);
                 } else if (type === "STRING") {
-                    params.default = card.querySelector('.input-default').value;
-                    params.multiline = card.querySelector('.input-multiline').checked;
-                    params.placeholder = card.querySelector('.input-placeholder').value.trim();
+                    params.default = card.querySelector('.input-default')?.value || "";
+                    params.multiline = card.querySelector('.input-multiline')?.checked || false;
+                    params.placeholder = card.querySelector('.input-placeholder')?.value?.trim() || "";
                 } else if (type === "COMBO") {
-                    params.values = card.querySelector('.input-values').value.split('\n').map(v => v.trim()).filter(v => v);
-                    params.default = card.querySelector('.input-default').value.trim() || undefined;
+                    const vals = card.querySelector('.input-values')?.value || "";
+                    params.values = vals.split('\n').map(v => v.trim()).filter(v => v);
+                    params.default = card.querySelector('.input-default')?.value?.trim() || undefined;
                 } else if (type === "FILELIST") {
-                    params.folder = card.querySelector('.input-folder').value.trim() || undefined;
-                    params.default = card.querySelector('.input-default').value.trim() || undefined;
+                    params.folder = card.querySelector('.input-folder')?.value?.trim() || undefined;
+                    params.default = card.querySelector('.input-default')?.value?.trim() || undefined;
                 } else if (type === "BOOLEAN") {
-                    params.default = card.querySelector('.input-default').checked;
+                    params.default = card.querySelector('.input-default')?.checked ?? true;
                 } else if (type === "BUTTON") {
-                    params.action = card.querySelector('.input-action').value;
+                    params.action = card.querySelector('.input-action')?.value || "run";
                 } else if (type === "BYPASSER") {
-                    params.default = card.querySelector('.input-default').checked;
-                    const mId = card.querySelector('.input-match-id').value.trim();
-                    const mTitle = card.querySelector('.input-match-title').value.trim();
-                    const mGroup = card.querySelector('.input-match-group').value.trim();
+                    params.default = card.querySelector('.input-default')?.checked ?? true;
+                    const mId = card.querySelector('.input-match-id')?.value?.trim() || "";
+                    const mTitle = card.querySelector('.input-match-title')?.value?.trim() || "";
+                    const mGroup = card.querySelector('.input-match-group')?.value?.trim() || "";
                     
+                    // 赋值并清理旧数据，防止空值残留
                     if (mId) params.match_id = mId.split(',').map(v => v.trim()).filter(v => v);
+                    else delete params.match_id;
+                    
                     if (mTitle) params.match_title = mTitle.split(',').map(v => v.trim()).filter(v => v);
+                    else delete params.match_title;
+                    
                     if (mGroup) params.match_group = mGroup.split(',').map(v => v.trim()).filter(v => v);
+                    else delete params.match_group;
                 } else if (type === "UPLOADER") {
-                    params.media = card.querySelector('.input-media').value;
-                } else if (type === "PREVIEWER") {
-                    // 虚拟卡片无额外子参数，只需空占位即可
+                    params.media = card.querySelector('.input-media')?.value || "image";
                 }
 
                 return { key, type, params };
