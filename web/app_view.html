@@ -555,6 +555,9 @@
         let currentLightboxIndex = 0;
         let currentImagesList = [];
         
+        let logHeight = localStorage.getItem('appview_log_height') || 250;
+        let isLogOpen = false;
+        
         const savedTheme = localStorage.getItem('appview_theme') || 'dark';
         if (savedTheme === 'light') {
             document.documentElement.classList.add('light-theme');
@@ -870,23 +873,32 @@
                     // 👇【全新替换】：底部控制台抽屉逻辑
                     const logContainer = document.getElementById('log-drawer-container');
                     const logBtn = document.getElementById('console-toggle');
-                    let logHeight = localStorage.getItem('appview_log_height') || 250;
-                    let isLogOpen = false;
                     
+                    if (localStorage.getItem('appview_log_height')) logHeight = parseInt(localStorage.getItem('appview_log_height'));
+                    
+                    // 👇【修改】：绑定重构后的点击切换
                     logBtn.onclick = (e) => {
                         e.stopPropagation();
                         isLogOpen = !isLogOpen;
                         logBtn.classList.toggle('active', isLogOpen);
                         
+                        const isDesktop = window.innerWidth >= 768;
                         if (isLogOpen) {
-                            logContainer.style.height = `${logHeight}px`;
-                            // 展开时立即滚动到底部
+                            if (isDesktop) {
+                                logContainer.style.height = `${logHeight}px`;
+                            } else {
+                                applyMobileLayout(logHeight); // 👈 统一由引擎接管手机端
+                            }
                             setTimeout(() => {
                                 const content = document.getElementById('log-content');
                                 if (content) content.scrollTop = content.scrollHeight;
-                            }, 250); // 等待过渡动画结束
+                            }, 250);
                         } else {
-                            logContainer.style.height = '0px';
+                            if (isDesktop) {
+                                logContainer.style.height = '0px';
+                            } else {
+                                applyMobileLayout(0); // 👈 关闭时传 0，大图会自动恢复原高度！
+                            }
                         }
                     };
                     
@@ -1707,16 +1719,61 @@
             });
         }
         
-        // 📐【精准视觉锚定版】：高度拖拽器逻辑
+        // 📐【手机端双向联动核心引擎 - 保护修复版】
+        function applyMobileLayout(targetLogHeight) {
+            const isDesktop = window.innerWidth >= 768;
+            if (isDesktop) return; 
+            
+            const logContainer = document.getElementById('log-drawer-container');
+            const viewerContainer = document.querySelector('.viewer-container');
+            if (!logContainer || !viewerContainer) return;
+            
+            const totalHeight = window.innerHeight;
+            const minRightPanelHeight = 149; 
+            const minViewerHeight = 110;
+            
+            let preferredPreviewHeight = parseInt(localStorage.getItem('appview_preview_height'));
+            if (isNaN(preferredPreviewHeight)) {
+                preferredPreviewHeight = totalHeight * 0.3;
+            }
+            
+            const maxLogHeight = totalHeight - minViewerHeight - minRightPanelHeight;
+            let finalLogHeight = targetLogHeight;
+            if (finalLogHeight > maxLogHeight) finalLogHeight = maxLogHeight;
+            if (finalLogHeight < 0) finalLogHeight = 0;
+            
+            let expectedRightPanelHeight = totalHeight - preferredPreviewHeight;
+            let actualViewerHeight = totalHeight - finalLogHeight - expectedRightPanelHeight;
+            
+            if (actualViewerHeight < minViewerHeight) {
+                actualViewerHeight = minViewerHeight;
+            }
+            
+            viewerContainer.style.flex = `0 0 ${actualViewerHeight}px`;
+            logContainer.style.height = `${finalLogHeight}px`;
+            
+            // 🟢【重要修复】：只有当实际渲染高度 > 0（打开状态下）时，才去改写全局记忆 logHeight
+            // 这样点击关闭（finalLogHeight = 0）时，全局记忆依然是关闭前那个健康的（比如 250px）数值
+            if (finalLogHeight > 0) {
+                logHeight = finalLogHeight;
+                localStorage.setItem('appview_log_height', finalLogHeight);
+            }
+        }
+        
+        // 📐【自包含完整版】：底部日志抽屉拖拽控制
         function initLogResizeLogic() {
             const logResizer = document.getElementById('log-resizer');
             const logContainer = document.getElementById('log-drawer-container');
             const mainLayout = document.querySelector('.main-layout');
             const logContent = document.getElementById('log-content');
-            let isDraggingLog = false;
+            const viewerContainer = document.querySelector('.viewer-container');
+            const rightPanel = document.querySelector('.right-panel');
             
-            // 👈 新增：用来记录拖拽开始时，视口底部对齐的那行字所在的绝对 Y 轴坐标
+            let isDraggingLog = false;
             let dragVisibleBottomY = 0;
+            let initialRightPanelHeight = 0; // 记录拖放开始时右面板的物理高度
+            
+            if (!logResizer) return;
             
             logResizer.addEventListener('mousedown', startLogDrag);
             logResizer.addEventListener('touchstart', startLogDrag, { passive: false });
@@ -1728,9 +1785,15 @@
                 mainLayout.style.pointerEvents = 'none';
                 document.body.style.cursor = 'row-resize';
                 
-                // 👈【核心锁定】：记录拖拽开始瞬间，视口最底部边缘对应整个文档的绝对 Y 坐标
+                // 记录拖拽开始瞬间，视口最底部边缘对应的绝对 Y 坐标
                 if (logContent) {
                     dragVisibleBottomY = logContent.scrollTop + logContent.clientHeight;
+                }
+                
+                // 手机端下记录右面板拖拽开始前的初始物理高度
+                const isDesktop = window.innerWidth >= 768;
+                if (!isDesktop && rightPanel) {
+                    initialRightPanelHeight = rightPanel.clientHeight;
                 }
                 
                 document.addEventListener('mousemove', logDrag);
@@ -1741,30 +1804,39 @@
             
             function logDrag(e) {
                 if (!isDraggingLog) return;
-                if (e.cancelable) e.preventDefault(); // 阻止 iOS 橡皮筋回弹
+                if (e.cancelable) e.preventDefault(); // 阻止手机浏览器弹性拉伸
                 
                 const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
                 const totalHeight = window.innerHeight;
                 let newHeight = totalHeight - clientY;
                 
-                // 调节范围保护
+                // 1. 限制抽屉本身最小高度 100px
                 if (newHeight < 100) newHeight = 100;
-                if (newHeight > totalHeight - 150) newHeight = totalHeight - 150;
                 
-                logContainer.style.height = `${newHeight}px`;
-                localStorage.setItem('appview_log_height', newHeight);
+                const isDesktop = window.innerWidth >= 768;
+                const safetyMargin = isDesktop ? 220 : 260; 
                 
-                // 👈【核心数学对齐校正】：
-                // 用拖拽开始时锁定的 Y 坐标，减去当前的视口高度，动态计算并写入最新的滚动距离。
-                // 这样就能确保“拖放开始时”显示在最底部的最后一行字，在缩放时雷打不动地钉在最底部！
+                // 2. 限制最大高度，不能顶死主界面
+                if (newHeight > totalHeight - safetyMargin) {
+                    newHeight = totalHeight - safetyMargin;
+                }
+                
+                if (isDesktop) {
+                    // 💻 电脑端：只控制日志抽屉高度
+                    logContainer.style.height = `${newHeight}px`;
+                    logHeight = newHeight;
+                    localStorage.setItem('appview_log_height', newHeight);
+                } else {
+                    // 📱 手机端：走自适应双向推挤引擎
+                    applyMobileLayout(newHeight);
+                }
+                
+                // 3. 精准视觉对齐锚定
                 if (logContent) {
                     let targetScrollTop = dragVisibleBottomY - logContent.clientHeight;
-                    
-                    // 安全边界控制（不能低于 0 且不能超过最大滚动范围）
                     const maxScroll = logContent.scrollHeight - logContent.clientHeight;
                     if (targetScrollTop < 0) targetScrollTop = 0;
                     if (targetScrollTop > maxScroll) targetScrollTop = maxScroll;
-                    
                     logContent.scrollTop = targetScrollTop;
                 }
             }
@@ -1780,16 +1852,22 @@
                 document.removeEventListener('mouseup', stopLogDrag);
                 document.removeEventListener('touchend', stopLogDrag);
                 
-                logHeight = parseInt(logContainer.style.height);
+                // 停止时同步最新高度
+                if (logContainer) {
+                    logHeight = parseInt(logContainer.style.height) || logHeight;
+                }
             }
         }
         
-        // 自适应拖拽逻辑（已深度整合 ChatGPT 优化机制）
+        // 📐【自包含完整版 - 双向无缝对齐修复】
         function initResizeLogic() {
             const resizer = document.getElementById('resizer');
             const viewerContainer = document.querySelector('.viewer-container');
             const rightPanel = document.querySelector('.right-panel');
+            const logContainer = document.getElementById('log-drawer-container');
             let isDragging = false;
+            
+            if (!resizer) return;
             
             resizer.addEventListener('mousedown', startDrag);
             resizer.addEventListener('touchstart', startDrag, { passive: false });
@@ -1825,24 +1903,48 @@
                     if (newWidth < 250) newWidth = 250;
                     if (newWidth > totalWidth - 150) newWidth = totalWidth - 150;
                     
-                    // GPT 机制：同步设置 flexBasis 与 width 保证拖拽极其稳定
                     rightPanel.style.flexBasis = `${newWidth}px`;
                     rightPanel.style.width = `${newWidth}px`;
                     localStorage.setItem('appview_panel_width', newWidth); 
                 } else {
                     let newHeight = clientY;
                     const totalHeight = window.innerHeight;
-                    let minHeight = 148;
-                    //if (!isSafari()) minHeight = 147;
-                    if (newHeight < minHeight) newHeight = minHeight;
-                    if (newHeight > totalHeight - minHeight) newHeight = totalHeight - minHeight;
+                    
+                    if (newHeight < 110) newHeight = 110; 
+                    
+                    const minRightPanelHeight = 149; 
+                    
+                    // 双向限制
+                    if (isLogOpen) {
+                        const availableSpaceForLog = totalHeight - newHeight - minRightPanelHeight;
+                        if (logHeight > availableSpaceForLog) {
+                            let tempLogHeight = availableSpaceForLog;
+                            
+                            if (tempLogHeight < 100) {
+                                tempLogHeight = 100;
+                            } else {
+                                if (logContainer) logContainer.style.height = `${tempLogHeight}px`;
+                                logHeight = tempLogHeight; 
+                                localStorage.setItem('appview_log_height', logHeight);
+                            }
+                        }
+                    }
+                    
+                    const absoluteMaxViewerHeight = totalHeight - (isLogOpen ? logHeight : 0) - minRightPanelHeight;
+                    if (newHeight > absoluteMaxViewerHeight) {
+                        newHeight = absoluteMaxViewerHeight;
+                    }
                     
                     viewerContainer.style.flex = `0 0 ${newHeight}px`;
-                    localStorage.setItem('appview_preview_height', newHeight); 
+                    
+                    // 🟢【核心数学修复】：
+                    // 我们不把当前“被压扁的大图高度”存入缓存，而是存入“隐含的未挤压首选高度”
+                    // 隐含高度 = 当前拉出的高度 + 占用的日志高度
+                    const impliedPreferredHeight = newHeight + (isLogOpen ? logHeight : 0);
+                    localStorage.setItem('appview_preview_height', impliedPreferredHeight); 
                 }
             }
             
-            // 恢复事件状态
             function stopDrag() {
                 isDragging = false;
                 resizer.classList.remove('dragging');
