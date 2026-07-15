@@ -763,36 +763,78 @@
             });
         }
 
-        // 保存打包
+        // 👈【核心修改】：支持 RAW 视图直通写盘的保存函数，100% 保护你在 JSON 里手写的所有高级自定义键值对（如 class）
         function saveConfigToParent() {
+            // 1. 如果用户是在 💻 RAW 模式下直接点击了“保存”
             if (isRawMode) {
                 const rawTextarea = document.getElementById('raw-textarea');
                 try {
-                    // 强行尝试解析校验
-                    JSON.parse(rawTextarea.value || "{}");
-                    // 校验通过，直接利用切页逻辑将文本区状态回填重构回 configList
-                    toggleRawMode(); 
+                    // 强行尝试解析校验（如果写错了逗号等会在此时弹窗警报，绝对不丢失文本）
+                    const parsed = JSON.parse(rawTextarea.value || "{}");
+                    
+                    // 👈 核心：越过卡片打包，直接向主界面节点的 config_json 注入解析好的 RAW 成果
+                    if (window.parent && window.parent.comfyApp && nodeId) {
+                        const parentNode = window.parent.comfyApp.graph.getNodeById(nodeId);
+                        if (parentNode) {
+                            
+                            // 检查 RAW 文本中是否保留/设置了虚拟的 PREVIEWER 选项并进行状态同步
+                            let hasPreviewer = false;
+                            const compiled = {};
+                            
+                            for (const [key, params] of Object.entries(parsed)) {
+                                if (params.type === "PREVIEWER") {
+                                    hasPreviewer = true;
+                                    continue; // 过滤虚拟控件
+                                }
+                                const finalParams = { ...params };
+                                if (params.type === "FILELIST") {
+                                    finalParams.type = "COMBO"; // 输出归一化
+                                }
+                                compiled[key] = finalParams;
+                            }
+
+                            // 写入 live_preview 同步
+                            const livePreviewWidget = parentNode.widgets.find(w => w.name === "live_preview");
+                            if (livePreviewWidget) {
+                                livePreviewWidget.value = hasPreviewer;
+                                if (livePreviewWidget.callback) livePreviewWidget.callback(hasPreviewer);
+                            }
+
+                            const jsonWidget = parentNode.widgets.find(w => w.name === "config_json");
+                            if (jsonWidget) {
+                                jsonWidget.value = JSON.stringify(compiled, null, 2);
+                                parentNode.buildDynamicUI();
+                                parentNode.notifyUnpackers();
+                            }
+                        }
+                    }
+
+                    // 成功直接保存，销毁弹窗并提早返回（Bypass 掉底下的 packCurrentInput 流程）
+                    if (window.parent.closeConfigOverlay) {
+                        window.parent.closeConfigOverlay();
+                    }
+                    return; 
                 } catch (err) {
                     alert(t('invalid_json_alert', 'Invalid JSON format! Please correct it. Error:\n{0}', err.message));
                     return;
                 }
             }
 
+            // 2. 如果用户是在 👁️ 可视化视图下点击的保存，则走常规的卡片打包路径
             packCurrentInputToState();
 
             const compiled = {};
             let hasError = false;
-            let hasPreviewer = false; // 👈 用于统计用户有没有添加预览器卡片
+            let hasPreviewer = false;
 
             for (let i = 0; i < configList.length; i++) {
                 const item = configList[i];
-                
-                // 👇【新增判定】：若为虚拟控件，不将其编译打包进 compiled JSON
+
                 if (item.type === "PREVIEWER") {
                     hasPreviewer = true;
-                    continue; // 跳过此卡片的编译流程
+                    continue; 
                 }
-                
+
                 if (!item.key) {
                     alert(t('empty_key_alert', "Parameter Key cannot be empty at index {0}!", i+1));
                     hasError = true;
@@ -809,7 +851,6 @@
                     break;
                 }
 
-                // 👈【归一化输出】：如果界面表现为 FILELIST，后端打包编译时强制重新改写成标准的 COMBO，确保下游100%无碍解析！
                 const finalParams = { ...item.params };
                 if (item.type === "FILELIST") {
                     finalParams.type = "COMBO";
@@ -822,7 +863,6 @@
             if (window.parent && window.parent.comfyApp && nodeId) {
                 const parentNode = window.parent.comfyApp.graph.getNodeById(nodeId);
                 if (parentNode) {
-                    // 👇【新增】：同步刷新主节点上的原生 live_preview 属性值
                     const livePreviewWidget = parentNode.widgets.find(w => w.name === "live_preview");
                     if (livePreviewWidget) {
                         livePreviewWidget.value = hasPreviewer;
