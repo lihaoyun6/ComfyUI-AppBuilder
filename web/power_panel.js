@@ -298,6 +298,16 @@ app.registerExtension({
                             this.appWindow.postMessage({ type: 'execution_error', detail: e.detail }, '*');
                         }
                     };
+                    const onExecuting = (e) => {
+                        if (this.appWindow && !this.appWindow.closed) {
+                            this.appWindow.postMessage({ type: 'executing', detail: e.detail }, '*');
+                        }
+                    };
+                    const onLog = (e) => {
+                        if (this.appWindow && !this.appWindow.closed) {
+                            this.appWindow.postMessage({ type: 'log', detail: e.detail }, '*');
+                        }
+                    };
 
                     if (this._onPreview) {
                         api.removeEventListener("b_preview", this._onPreview);
@@ -307,6 +317,7 @@ app.registerExtension({
                         api.removeEventListener("execution_interrupted", this._onInterrupted);
                         api.removeEventListener("progress", this._onProgress);
                         api.removeEventListener("execution_error", this._onExecutionError);
+                        api.removeEventListener("executing", this._onExecuting);
                     }
 
                     this._onPreview = onPreview;
@@ -316,6 +327,7 @@ app.registerExtension({
                     this._onInterrupted = onInterrupted;
                     this._onProgress = onProgress;
                     this._onExecutionError = onExecutionError;
+                    this._onExecuting = onExecuting;
 
                     api.addEventListener("b_preview", onPreview);
                     api.addEventListener("executed", onExecuted);
@@ -324,6 +336,7 @@ app.registerExtension({
                     api.addEventListener("execution_interrupted", onInterrupted);
                     api.addEventListener("progress", onProgress);
                     api.addEventListener("execution_error", onExecutionError);
+                    api.addEventListener("executing", onExecuting);
                 };
 
                 const onRemoved = this.onRemoved;
@@ -336,6 +349,7 @@ app.registerExtension({
                         api.removeEventListener("execution_interrupted", this._onInterrupted);
                         api.removeEventListener("progress", this._onProgress);
                         api.removeEventListener("execution_error", this._onExecutionError);
+                        api.removeEventListener("executing", this._onExecuting);
                     }
                     if (onRemoved) onRemoved.apply(this, arguments);
                 };
@@ -345,7 +359,7 @@ app.registerExtension({
                     openConfigOverlay(this.id);
                 });
 
-                this.addWidget("button", "📱 Open in AppView", "btn_app_view", () => {
+                const btnWidget = this.addWidget("button", "📱 Open in AppView", "btn_app_view", () => {
                     const htmlUrl = new URL('app_view.html', import.meta.url);
                     htmlUrl.searchParams.set('nodeId', this.id); 
                     
@@ -356,6 +370,17 @@ app.registerExtension({
                     }
                     this.registerAppWindow(appWindow);
                 });
+                
+                // 👇 【核心修复】：利用 Object.defineProperty 绕过只读 Getter 限制，强行重写绘制高度
+                Object.defineProperty(btnWidget, 'height', {
+                    get() { return 40; }, // 👈 在这里返回你想要的视觉高度（例如 40）
+                    configurable: true    // 允许属性可配置
+                });
+                
+                // 保持原有的判定区大小与之同步
+                btnWidget.computeSize = function(width) {
+                    return [width, 40]; 
+                };
                 
                 this.hideWidget = function(widget) {
                     if (!widget._origType) widget._origType = widget.type;

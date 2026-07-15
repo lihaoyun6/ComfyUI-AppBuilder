@@ -1,5 +1,9 @@
+import sys
 import json
+import logging
+import collections
 import folder_paths
+
 from aiohttp import web
 from server import PromptServer
 
@@ -101,6 +105,68 @@ async def get_models_list(request):
         files = folder_paths.get_filename_list(folder)
         return web.json_response(files)
     return web.json_response([], status=404)
+
+
+# 1. 限制队列最大长度 420 行。存储格式为 (log_id, log_text) 元组
+log_buffer = collections.deque(maxlen=420)
+log_counter = 0 # 全局自增日志序列号
+
+class ComfyUIAppViewLogHandler(logging.Handler):
+    def emit(self, record):
+        global log_counter
+        try:
+            msg = self.format(record)
+            if msg.strip():
+                log_counter += 1
+                log_buffer.append((log_counter, msg)) # 👈 写入自增 ID 标识
+        except Exception:
+            self.handleError(record)
+            
+# 挂载日志记录器
+root_logger = logging.getLogger()
+i18n_log_handler = ComfyUIAppViewLogHandler()
+i18n_log_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+root_logger.addHandler(i18n_log_handler)
+
+
+# 2. 原生输出流包装，专司 tqdm 进度条捕获
+class LogStreamWrapper:
+    def __init__(self, original_stream):
+        self.original_stream = original_stream
+        
+    def write(self, data):
+        global log_counter
+        self.original_stream.write(data)
+        clean_data = data.strip()
+        if clean_data:
+            # 过滤普通 INFO 日志避免重复，只捕获进度条
+            is_progress = "%|" in clean_data or "it/s" in clean_data or "s/it" in clean_data
+            if is_progress:
+                log_counter += 1
+                log_buffer.append((log_counter, clean_data)) # 👈 写入自增 ID 标识
+                
+    def flush(self):
+        self.original_stream.flush()
+        
+sys.stdout = LogStreamWrapper(sys.stdout)
+sys.stderr = LogStreamWrapper(sys.stderr)
+
+
+# 3. 👈【终极升级】：支持增量拉取的日志获取路由。实现刷新不丢历史、多端同时共享日志！
+@PromptServer.instance.routes.get("/power_panel/logs")
+async def get_captured_logs(request):
+    try:
+        after_id = int(request.query.get("after", 0))
+    except ValueError:
+        after_id = 0
+        
+    new_logs = []
+    # 过滤出所有大于 after_id 的新行返回给前端
+    for log_id, line in log_buffer:
+        if log_id > after_id:
+            new_logs.append({"id": log_id, "text": line})
+            
+    return web.json_response(new_logs)
 
 NODE_CLASS_MAPPINGS = {
     "PowerParameterPanel": PowerParameterPanel,

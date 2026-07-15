@@ -276,7 +276,8 @@
             if (locale.startsWith("en")) return; 
 
             try {
-                const i18nUrl = new URL(`i18n/${locale}.json`, window.location.href).href;
+                const cacheBuster = `?t=${new Date().getTime()}`;
+                const i18nUrl = new URL(`i18n/${locale}.json${cacheBuster}`, window.location.href).href;
                 let res = await fetch(i18nUrl);
                 if (!res.ok) {
                     const baseLang = locale.split('-')[0];

@@ -22,7 +22,7 @@
         /* 🌓 浅色主题（点击按钮时激活） */
         :root.light-theme {
             color-scheme: light;
-            --bg: #e6e6e6;
+            --bg: #fafafa;
             --bg-color: #F1F1F1;
             --bg-badge: rgba(128,128,128,0.4);
             --panel-bg: #FFFFFF;
@@ -94,7 +94,7 @@
 
         /* 画廊默认样式（手机竖屏：缩略图 50px） */
         .gallery-container { 
-            display: flex; overflow-x: auto; padding: 8px 16px; gap: 8px; height: 70px;
+            display: flex; overflow-x: auto; padding: 10px 16px; gap: 8px; height: 72px;
             background-color: var(--panel-bg); border-top: 1px solid var(--border);
             border-top-left-radius: 18px; border-top-right-radius: 18px;
             overflow-y: hidden; touch-action: pan-x;
@@ -106,16 +106,15 @@
         }
 
         .status-badge {
-            position: absolute; top: 10px; right: 10px; background: var(--border);
+            position: absolute; top: 10px; right: 10px; background: var(--border); height: 24px;
             padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: var(--title); z-index: 10;
             border: 1px solid var(--title); text-shadow: 0px 1px 0px var(--panel-bg);
         }
 
         /* 拖拽调节器 */
         .resizer {
-            height: 18px; width: 100%; cursor: row-resize; flex-shrink: 0; border-top: 2px solid var(--border);
-            position: relative; z-index: 100; user-select: none;
-            border-top-left-radius: 18px; border-top-right-radius: 18px; background-color: var(--bg-color);
+            height: 18px; width: 100%; cursor: row-resize; flex-shrink: 0;
+            position: relative; z-index: 100; user-select: none; background-color: var(--bg-color);
         }
         .resizer::after {
             content: ''; position: absolute; left: 50%; top: 8px; transform: translate(-50%, -50%);
@@ -124,7 +123,8 @@
 
         /* 右侧面板 */
         .right-panel {
-            flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;
+            flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; border-top: 2px solid var(--border);
+            box-shadow: 0px 0px 30px rgb(0,0,0,0.1); border-top-left-radius: 18px; border-top-right-radius: 18px;
         }
 
         /* 紧凑参数区：由于画廊手机端在最下侧，Padding只需要 150px（按钮+画廊） */
@@ -133,10 +133,10 @@
             padding: 12px 16px; padding-bottom: 150px; background-color: var(--bg-color);
         }
         .controls-section::-webkit-scrollbar { display: none; }
-        .control-group { margin-bottom: 10px;}
+        .control-group { margin-bottom: 8px;}
         .control-group label.control-title { 
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 4px; font-size: 13px; color: var(--title); 
+            margin-bottom: 3px; font-size: 13px; color: var(--title); 
         }
         
         /* 👇 新增：Slider 数值专用小气泡样式，采用等宽字体防止数字跳动时框体抖动 */
@@ -286,15 +286,15 @@
 
         /* 底部操作栏 */
         .bottom-action-bar {
-            position: absolute; bottom: 0; left: 0; width: 100%; background-color: var(--panel-bg);
-            border-top: 1px solid var(--border); z-index: 100; display: flex; flex-direction: column;
-            padding-bottom: env(safe-area-inset-bottom); border-top-left-radius: 19px; border-top-right-radius: 19px;
+            position: absolute; bottom: 0; left: 0; width: 100%; background-color: var(--panel-bg); z-index: 100; display: flex;
+            flex-direction: column; padding-bottom: env(safe-area-inset-bottom); border-top-left-radius: 19px; border-top-right-radius: 19px;
+            box-shadow: 0px 0px 30px rgb(0,0,0,0.1); border-top: 1px solid var(--border); 
         }
         
         .button-group { display: flex; gap: 10px; padding: 8px 16px 10px 16px; }
         /* 底部操作按钮基础样式与点击回弹 */
         .btn {
-            flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 14px;
+            flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 14px; height: 40px;
             font-weight: bold; color: white; cursor: pointer; display: flex; justify-content: center;
             align-items: center; transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
         }
@@ -305,27 +305,14 @@
         .btn-run { width: 100%; background-color: #3E8AE2; }
         .btn-run:hover { filter: brightness(1.15); }
         .queue-badge {
-            display: none; 
-            position: absolute;
-            top: -6px;
-            left: -6px;
-            background-color: #F44336 !important;
-            color: #FFFFFF !important;
-            font-size: 11px;
-            font-weight: bold;
-            height: 20px;
-            min-width: 20px;
-            padding: 0 5px;
-            border-radius: 10px;
-            border: 1.5px solid var(--panel-bg);
-            align-items: center; 
-            justify-content: center;
-            z-index: 10;
-            pointer-events: none; 
+            display: none; position: absolute; top: -6px; left: -6px; font-size: 13px; font-weight: bold;
+            background-color: #F44336 !important; color: #FFFFFF !important; height: 26px; min-width: 26px;
+            padding: 0 5px; border-radius: 13px; border: 1.5px solid var(--panel-bg); align-items: center; 
+            justify-content: center; z-index: 10; pointer-events: none; 
         }
         
         /* 👇 修改：停止按钮。采用深红色（#A6433F），宽度为 60px 的紧凑正方形，增加鼠标经过高光 */
-        .btn-stop { background-color: #C43A20; flex: 1; }
+        .btn-stop { background-color: #d13d22; flex: 1; font-size: 20px !important; }
         .btn-stop:hover { filter: brightness(1.15); }
         
         /* 👇【新增：SEED 专属控件整体包装器与下拉动作菜单样式】 */
@@ -368,17 +355,22 @@
         }
         .lightbox-content { max-width: 95dvw; max-height: 90dvh; object-fit: contain; animation: zoom 0.15s ease-out; }
         @keyframes zoom { from {transform: scale(0.95); opacity: 0;} to {transform: scale(1); opacity: 1;} }
-        .lightbox-close { position: absolute; top: 20px; right: 25px; color: #fff; font-size: 35px; font-weight: bold; cursor: pointer; user-select: none; z-index: 11300; }
         .lightbox-arrow {
             position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.55);
             border: none; color: #fff; font-size: 30px; width: 48px; height: 48px; border-radius: 50%;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
-            z-index: 11200; transition: background 0.2s, transform 0.1s; padding-bottom: 4px;
+            z-index: 11200; transition: background 0.2s, transform 0.1s;
         }
         .lightbox-arrow:hover { background: var(--primary); }
         .lightbox-arrow:active { transform: translateY(-50%) scale(0.9); }
         .lightbox-arrow-left { left: 20px; padding-right: 3px; }
         .lightbox-arrow-right { right: 20px; padding-left: 3px; }
+        
+        .lightbox-close {
+            top: 40px; right: 20px; font-size: 35px; font-weight: bold; padding-bottom: 6px;
+            user-select: none; z-index: 11300 !important;
+        }
+        .lightbox-close:hover { background: #d13d22 !important; }
         
         .number-input::-webkit-outer-spin-button, .number-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .number-input[type=number] { -moz-appearance: textfield; }
@@ -392,74 +384,142 @@
             text-shadow: 0px 0px 1px var(--text) !important; transition: transform 0.2s ease;
         }
         .theme-toggle-btn:hover { transform: scale(1.1); }
+        
+        .terminal-badge { top: 10px; left: 50px; padding-bottom: 4px; text-shadow: 0px -1px 0px !important;}
+        @supports (-webkit-hyphens: none) {
+            .terminal-badge { left: 55px; padding-bottom: 10px; }
+        }
+        
+        /* 👇【修改】：将终端展示区域完美适配到弹窗容器中，字体保持高对比度等宽 */
+        .log-drawer-body {
+            width: 100%; height: 100%; background: #171717; border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+            font-family: Consolas, Monaco, "Courier New", monospace; font-size: 12px; color: #ccc; overflow-y: auto;
+            -webkit-overflow-scrolling: touch; user-select: text !important; -webkit-user-select: text !important; 
+        }
+        
+        /* 终端高亮配置不变 */
+        .log-line { margin-bottom: 3px; word-break: break-all; }
+        .log-time { color: #555; margin-right: 6px; }
+        .log-tag { font-weight: bold; margin-right: 6px; }
+        .log-line.system { color: #ffeb3b; }
+        .log-line.system .log-tag { color: #ffeb3b; }
+        .log-line.executing { color: #fff; }
+        .log-line.executing .log-tag { color: #fff }
+        .log-line.running { color: #3E8AE2; }
+        .log-line.running .log-tag { color: #3E8AE2; }
+        .log-line.output { color: var(--primary); }
+        .log-line.output .log-tag { color: var(--primary); }
+        .log-line.error { color: var(--danger); }
+        .log-line.error .log-tag { color: var(--danger); }
 
+        .btn-console { 
+            background-color: #444; color: #fff; flex: 0 0 45px; font-size: 16px !important;
+            font-family: monospace; padding-top: 0px; padding-left: 0px;
+        }
+        .btn-console:hover { filter: brightness(1.2); }
+        .btn-console.active { background-color: var(--primary); }
+        
+        /* 👇【新增】：主布局容器，继承原先 body 的响应式行为 */
+        .main-layout { display: flex; flex-direction: column; flex: 1; width: 100%; overflow: hidden; }
+        
+        /* 👇【新增】：底部日志推起抽屉容器 */
+        .log-drawer-container {
+            display: flex; flex-direction: column; width: 100%; flex-shrink: 0; height: 0px; /* 默认隐藏 */
+            transition: height 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); background-color: var(--panel-bg);
+            z-index: 1000; overflow: hidden;
+        }
+        .log-drawer-container.dragging { transition: none; /* 拖拽时取消动画保证跟手 */ }
+        
+        .log-resizer {
+            height: 18px; width: 100%; cursor: row-resize; background-color: #171717;
+            flex-shrink: 0; display: flex; justify-content: center; align-items: center; border-top: 2px solid var(--border);
+        }
+        .log-resizer::after { content: ''; width: 100px; height: 4px; background: #AAAAAA; border-radius: 2px; }
+        
+        /* 原有的 log-drawer-body 修改：去掉圆角和边框适应抽屉 */
+        .log-drawer-body { flex: 1; border: none; border-radius: 0; height: auto; }
+        
         /* 电脑端响应式重写 */
         @media (min-width: 768px) {
-            body { flex-direction: row; }
-            /* 👈 吸收GPT精髓：主视图容器加入 flex-shrink/auto 控制收缩 */
-            .viewer-container { flex: 1 1 auto; min-width: 0; height: 100vh; }
-            .preview-section { flex: 1; border-bottom: none; }
-
-            /* 👈 优化：横屏PC端画廊高度改成指定的 120px，缩略图 100px */
-            .gallery-container { flex: 0 0 120px !important; height: 120px !important; }
-            .gallery-item { width: 100px !important; height: 100px !important; }
-
-            /* 👈 吸收GPT精髓：PC分割线 flex-shrink 固定 */
-            .resizer {
-                width: 10px; height: 100%; cursor: col-resize; flex-shrink: 0; border-top: none;
-                border-bottom: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
-            }
-            .resizer::after { width: 3px; height: 50px; left: 50%; top: 50%; }
-            .resizer:hover, .resizer.dragging { background: var(--border); }
-
-            /* 👈 吸收GPT精髓：PC参数区引入 flex 0 0 / min-width 约束防止偏斜 */
+            /* 👈 核心修改：body 永远保持垂直排布，把横向排布交给 main-layout */
+            .main-layout { flex-direction: row; }
+            
+            /* 100vh 改为 100%，以完美适应底部抽屉推起后的高度 */
+            .viewer-container { flex: 1 1 auto; min-width: 0; height: 100%; }
             .right-panel { 
-                flex: 0 0 400px; width: 400px; min-width: 300px;
-                display: flex; flex-direction: column; height: 100vh; position: relative;
+                flex: 0 0 400px; width: 400px; min-width: 300px; display: flex; flex-direction: column; height: 100%;
+                position: relative; box-shadow: none; border-radius: 0px !important; border-top: 0px !important;
             }
-            /* 画廊移到左下侧了，PC端的参数区底部高度只需要 80px 容纳按钮即可 */
-            .controls-section { flex: 1; padding-bottom: 80px; }
-            .bottom-action-bar { position: absolute; width: 100%; } 
-            .button-group { display: flex; gap: 10px; padding: 16px 16px 16px 16px; }
-            .bottom-action-bar, .gallery-container, .resizer { border-radius: 0px; 0px; }
+            
+            /* 横屏PC端画廊高度 */
+            .gallery-container { flex: 0 0 100px !important; height: 120px !important; }
+            .gallery-item { width: 80px !important; height: 80px !important; }
+            
+            /* 之前修复的参数栏错位代码（保持绝对定位） */
+            .resizer {
+                position: absolute; left: 0; top: 0; 
+                width: 14px; height: 100%; cursor: col-resize; flex-shrink: 0; border-top: none;
+                border-bottom: none; border-left: 1px solid var(--border);
+            }
+            .resizer::after { width: 4px; height: 80px; left: 50%; top: calc(50% - 46px);}
+            .resizer:hover, .resizer.dragging { background: var(--border); }
+            .log-resizer {border-top: 1px solid var(--border);}
+            
+            .controls-section { flex: 1; padding-bottom: 80px; padding-left: 18px; }
+            .bottom-action-bar { position: absolute; width: 100%; height: 100px; } 
+            .button-group { display: flex; gap: 10px; padding: 16px; padding-top: 30px; }
+            .bottom-action-bar, .gallery-container, .resizer { border-radius: 0px; box-shadow: none; }
         }
     </style>
 </head>
 <body>
-
     <!-- 顶端隐性进度条 -->
     <div class="progress-bar-container">
         <div class="progress-bar-fill" id="progress-bar"></div>
     </div>
-
-    <!-- 视图面板：包揽大图预览 -->
-    <div class="viewer-container">
-        <div class="preview-section">
-            <button class="theme-toggle-btn status-badge" id="theme-toggle">🌓</button>
-            <span class="status-badge" id="status-text" data-i18n="label_ready">Ready</span>
-            <img id="main-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23555'/><text x='50%' y='50%' fill='%23999' font-size='16' text-anchor='middle' alignment-baseline='middle'>No Media</text></svg>">
-        </div>
-        <!-- 结果历史画廊挂载点（该容器在 JS 中会随分辨率动态物理“迁徙”） -->
-        <div class="gallery-container" id="gallery"></div>
-    </div>
-
-    <!-- 拖拽调节器 -->
-    <div id="resizer" class="resizer"></div>
-
-    <div class="right-panel">
-        <div class="controls-section" id="dynamic-form">
-            <p style="color:#aaa; text-align:center; margin-top:20px;" data-i18n="loading_ui">Loading UI...</p>
-        </div>
-
-        <div class="bottom-action-bar">
-            <div class="button-group">
-                <input type="number" id="input-batch-count" class="number-input btn-batch-input" value="1" min="1" max="999" title="Batch Count" placeholder="1">
-                <div class="btn-run-wrapper">
-                    <span class="queue-badge" id="queue-badge"></span>
-                    <button class="btn btn-run" id="btn-run" data-i18n="button_run">▷ Run</button>
-                </div>
-                <button class="btn btn-stop" id="btn-stop">✘</button>
+    
+    <!-- 👇 1. 【新增】：包裹主界面的全局布局容器 -->
+    <div class="main-layout">
+        <!-- 视图面板：包揽大图预览 -->
+        <div class="viewer-container">
+            <div class="preview-section">
+                <button class="theme-toggle-btn status-badge" id="theme-toggle">🌓</button>
+                <!-- 👈 删除了这里的 terminal-badge 按钮 -->
+                <span class="status-badge" id="status-text" data-i18n="label_ready">Ready</span>
+                <img id="main-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23555'/><text x='50%' y='50%' fill='%23999' font-size='16' text-anchor='middle' alignment-baseline='middle'>No Media</text></svg>">
             </div>
+            <!-- 结果历史画廊 -->
+            <div class="gallery-container" id="gallery"></div>
+        </div>
+        
+        <div class="right-panel">
+            <div id="resizer" class="resizer"></div>
+            
+            <div class="controls-section" id="dynamic-form">
+                <p style="color:#aaa; text-align:center; margin-top:20px;" data-i18n="loading_ui">Loading UI...</p>
+            </div>
+            
+            <div class="bottom-action-bar">
+                <div class="button-group">
+                    <input type="number" id="input-batch-count" class="number-input btn-batch-input" value="1" min="1" max="999">
+                    <div class="btn-run-wrapper">
+                        <span class="queue-badge" id="queue-badge"></span>
+                        <button class="btn btn-run" id="btn-run" data-i18n="button_run">▷ Run</button>
+                    </div>
+                    <button class="btn btn-stop" id="btn-stop">&times;</button>
+                    <!-- 👇 2. 【新增】：将日志切换按钮移到了这里，和停止按钮并排 -->
+                    <button class="btn btn-console" id="console-toggle">>_</button>
+                </div>
+            </div>
+        </div>
+    </div> <!-- .main-layout 结束 -->
+    
+    <!-- 👇 3. 【新增】：底部的可伸缩日志抽屉 -->
+    <div id="log-drawer-container" class="log-drawer-container">
+        <!-- 横向高度调节拖拽条 -->
+        <div id="log-resizer" class="log-resizer"></div>
+        <div class="log-drawer-body" id="log-content">
+            <div class="log-line system"></div>
         </div>
     </div>
 
@@ -480,7 +540,7 @@
 
     <!-- 灯箱模式弹层 -->
     <div id="lightbox-modal" class="lightbox-modal">
-        <span class="lightbox-close" id="lightbox-close">&times;</span>
+        <span class="lightbox-arrow lightbox-close" id="lightbox-close">&times;</span>
         <button class="lightbox-arrow lightbox-arrow-left" id="lightbox-prev">&#10094;</button>
         <img class="lightbox-content" id="lightbox-img">
         <button class="lightbox-arrow lightbox-arrow-right" id="lightbox-next">&#10095;</button>
@@ -500,6 +560,12 @@
             document.documentElement.classList.add('light-theme');
         } else {
             document.documentElement.classList.remove('light-theme');
+        }
+        
+        function isSafari() {
+            const ua = navigator.userAgent;
+            return /Safari/.test(ua) &&
+            !/Chrome|CriOS|Edg|OPR|Firefox|FxiOS/.test(ua);
         }
         
         function t(key, defaultText, ...args) {
@@ -523,8 +589,8 @@
             if (locale.startsWith("en")) return; 
             
             try {
-                const i18nUrl = new URL(`i18n/${locale}.json`, window.location.href).href;
-                console.log(i18nUrl)
+                const cacheBuster = `?t=${new Date().getTime()}`;
+                const i18nUrl = new URL(`i18n/${locale}.json${cacheBuster}`, window.location.href).href;
                 let res = await fetch(i18nUrl);
                 if (!res.ok) {
                     const baseLang = locale.split('-')[0];
@@ -560,6 +626,88 @@
             }
         }
         
+        // 👇【终极升级】：引入增量自增 ID 追踪机制。刷新时自动拉回完整 400 行历史；正常运行时仅增量拉取新行，互不干扰
+        let logPollInterval = null;
+        window._lastLogId = 0; // 👈 核心：全局追踪本地当前接收到的最大日志 ID 标示
+        
+        function startLogPolling() {
+            if (logPollInterval) return;
+            
+            logPollInterval = setInterval(async () => {
+                try {
+                    // 1. 发起增量拉取请求（传递本地最大 ID）
+                    const res = await fetch(`/power_panel/logs?after=${window._lastLogId}`);
+                    if (res.ok) {
+                        const logs = await res.json();
+                        if (Array.isArray(logs) && logs.length > 0) {
+                            logs.forEach(item => {
+                                addRawTerminalLog(item.text); // 将清洗后的文本渲染
+                            });
+                            // 2. 核心：更新本地最大已接收日志 ID
+                            window._lastLogId = logs[logs.length - 1].id;
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Polling logs failed:", err);
+                }
+            }, 500); 
+        }
+        
+        // 💻 必须在全局作用域声明此变量（放在脚本最上方），用于锁定并原位重写 KSampler 跑步进度
+        let lastTerminalLineEl = null; 
+        
+        // 👇【最新升级】：专门针对模态层设计的真实 Python 终端镜像渲染器（带 tqdm 进度原位合并与 ANSI 降噪）
+        function addRawTerminalLog(lineText) {
+            const content = document.getElementById('log-content');
+            if (!content) return;
+            
+            const time = new Date().toLocaleTimeString();
+            
+            // 1. 判定此行是否是 KSampler 等节点的 tqdm 进度条（含有百分比、步数或速度指示）
+            const isProgress = lineText.includes('it/s') || lineText.includes('%|') || lineText.includes('s/it');
+            
+            // 2. 👈【核心清洗】：利用正则表达式彻底过滤掉 Python 终端自带的 \u001b[32m 等彩色 ANSI 转义字符乱码
+            const cleanText = lineText.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '').trim();
+            
+            if (!cleanText) return;
+            
+            // 3. 👈【原位重写】：如果这一行是进度条，且上一行也是进度条，我们直接在上一行进行覆盖写入，绝不让进度条刷屏！
+            if (isProgress && lastTerminalLineEl && lastTerminalLineEl.parentNode === content) {
+                lastTerminalLineEl.innerHTML = cleanText;
+            } else {
+                const lineEl = document.createElement('div');
+                
+                // 根据控制台日志文本，自适应匹配高亮颜色
+                let typeClass = 'system';
+                if (cleanText.includes('[ERROR]') || cleanText.includes('[WARNING]') || cleanText.includes('Error') || cleanText.includes('Exception') || cleanText.includes('FAILED')) {
+                    typeClass = 'error';
+                } else if (cleanText.includes('Prompt executed') || cleanText.includes('executed in') || cleanText.includes('[INFO] Prompt executed')) {
+                    typeClass = 'output';
+                } else if (cleanText.includes('got prompt') || cleanText.includes('[INFO] got prompt') || isProgress) {
+                    typeClass = 'executing';
+                }
+                
+                lineEl.className = `log-line ${typeClass}`;
+                lineEl.innerHTML = cleanText;
+                content.appendChild(lineEl);
+                
+                // 标记最后一行是否是进度条，以便下一个 step 覆写
+                if (isProgress) {
+                    lastTerminalLineEl = lineEl;
+                } else {
+                    lastTerminalLineEl = null; // 非进度条，重置锁，另起新行
+                }
+            }
+            
+            // 4. 强行保持日志滚动条固定在最底端，保障阅读最新内容
+            content.scrollTop = content.scrollHeight;
+            
+            // 5. 限制最大缓存 420 行防止内存泄漏
+            while (content.childNodes.length > 420) {
+                content.removeChild(content.firstChild);
+            }
+        }
+        
         // 统一消息接收
         window.addEventListener('message', (event) => {
             const msg = event.data;
@@ -588,6 +736,20 @@
                         
                         const gallery = document.getElementById('gallery');
                         gallery.insertBefore(imgEl, gallery.firstChild);
+                        
+                        // 👇【核心修改】：如果此时灯箱正开着，动态在后台静默重组播放列表，并校正索引，防止画面跳动
+                        const lightboxModal = document.getElementById('lightbox-modal');
+                        if (lightboxModal && lightboxModal.style.display === 'flex') {
+                            const currentViewedUrl = currentImagesList[currentLightboxIndex]; // 记录目前正在看的大图
+                            
+                            // 重新搜集包含最新生成图片的完整列表
+                            const items = Array.from(document.querySelectorAll('.gallery-item'));
+                            currentImagesList = items.map(i => i.src);
+                            
+                            // 反查并更新当前看的大图在新列表里的新位置（防止索引因新图插入发生漂移导致切图错乱）
+                            currentLightboxIndex = currentImagesList.indexOf(currentViewedUrl);
+                            if (currentLightboxIndex === -1) currentLightboxIndex = 0;
+                        }
                     });
                 }
             }
@@ -657,6 +819,18 @@
                 updateQueueBadge(0);
                 alert(`⚠️ ComfyUI Queue Error\n\n${msg.message}`);
             }
+            else if (msg.type === 'executing') {
+                const nodeId = msg.detail;
+                if (nodeId && window.comfyApp) {
+                    const node = window.comfyApp.graph.getNodeById(nodeId);
+                    if (node) {
+                        let nodeName = node.title || node.type || `Node #${nodeId}`;
+                        if (nodeName.length > 18) nodeName = nodeName.substring(0, 16) + "..";
+                        statusText.innerText = nodeName;
+                        statusText.style.color = "var(--primary)";
+                    }
+                }
+            }
         });
         
         // 页面初始化
@@ -683,13 +857,41 @@
                     
                     /// 1. 初始化拖拽事件监听
                     initResizeLogic();
+                    initLogResizeLogic();
                     
                     // 2. 👈【核心修改】：首次加载时传入 true 触发初始化排版，并在窗口调整大小时传入 false 调度过渡清理
                     handleResponsiveLayout(true); 
                     window.addEventListener('resize', () => handleResponsiveLayout(false));
                     
                     // 3. 初始化灯箱事件
+                    // 初始化灯箱事件
                     initLightboxEvents();
+                    
+                    // 👇【全新替换】：底部控制台抽屉逻辑
+                    const logContainer = document.getElementById('log-drawer-container');
+                    const logBtn = document.getElementById('console-toggle');
+                    let logHeight = localStorage.getItem('appview_log_height') || 250;
+                    let isLogOpen = false;
+                    
+                    logBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        isLogOpen = !isLogOpen;
+                        logBtn.classList.toggle('active', isLogOpen);
+                        
+                        if (isLogOpen) {
+                            logContainer.style.height = `${logHeight}px`;
+                            // 展开时立即滚动到底部
+                            setTimeout(() => {
+                                const content = document.getElementById('log-content');
+                                if (content) content.scrollTop = content.scrollHeight;
+                            }, 250); // 等待过渡动画结束
+                        } else {
+                            logContainer.style.height = '0px';
+                        }
+                    };
+                    
+                    // 3. 👇【核心修改】：启动后台静默轮询，无需拉下把手，它会在后台默默收集所有生成日志，随点随看！
+                    startLogPolling();
                     
                     document.getElementById('theme-toggle').onclick = () => {
                         const isLight = document.documentElement.classList.toggle('light-theme');
@@ -1384,7 +1586,7 @@
         // 多行编辑器逻辑
         function openMultilineEditor(targetInput, title) {
             activeInputEl = targetInput;
-            document.getElementById('modal-title').innerText = t("label_edit", "Edit: {0}", title);
+            document.getElementById('modal-title').innerText = t("label_editing", "📝 Editing: {0}", title);
             const modalTextarea = document.getElementById('multiline-textarea');
             modalTextarea.value = targetInput.value;
             if (targetInput.placeholder) {
@@ -1426,6 +1628,11 @@
                 updateLightboxUI();
                 document.getElementById('lightbox-modal').style.display = 'flex';
             }
+        }
+        
+        function closeLightbox() {
+            const lightboxModal = document.getElementById('lightbox-modal');
+            if (lightboxModal) lightboxModal.style.display = 'none';
         }
         
         function updateLightboxUI() {
@@ -1480,6 +1687,101 @@
                     lightboxModal.style.display = 'none';
                 }
             };
+            
+            // 👇【核心新增】：绑定键盘物理方向键左右翻页、及 ESC 键一键退出大图灯箱
+            document.addEventListener('keydown', (e) => {
+                const lightboxModal = document.getElementById('lightbox-modal');
+                // 只有当灯箱大图处于完全显示（flex）状态下，才拦截物理按键事件，防止误触
+                if (lightboxModal && lightboxModal.style.display === 'flex') {
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault(); // 阻止默认的网页左右滚动
+                        navigateLightbox(-1); // 上一张
+                    } else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        navigateLightbox(1);  // 下一张
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeLightbox(); // 👈 ESC 一键优雅退出
+                    }
+                }
+            });
+        }
+        
+        // 📐【精准视觉锚定版】：高度拖拽器逻辑
+        function initLogResizeLogic() {
+            const logResizer = document.getElementById('log-resizer');
+            const logContainer = document.getElementById('log-drawer-container');
+            const mainLayout = document.querySelector('.main-layout');
+            const logContent = document.getElementById('log-content');
+            let isDraggingLog = false;
+            
+            // 👈 新增：用来记录拖拽开始时，视口底部对齐的那行字所在的绝对 Y 轴坐标
+            let dragVisibleBottomY = 0;
+            
+            logResizer.addEventListener('mousedown', startLogDrag);
+            logResizer.addEventListener('touchstart', startLogDrag, { passive: false });
+            
+            function startLogDrag(e) {
+                e.preventDefault();
+                isDraggingLog = true;
+                logContainer.classList.add('dragging');
+                mainLayout.style.pointerEvents = 'none';
+                document.body.style.cursor = 'row-resize';
+                
+                // 👈【核心锁定】：记录拖拽开始瞬间，视口最底部边缘对应整个文档的绝对 Y 坐标
+                if (logContent) {
+                    dragVisibleBottomY = logContent.scrollTop + logContent.clientHeight;
+                }
+                
+                document.addEventListener('mousemove', logDrag);
+                document.addEventListener('touchmove', logDrag, { passive: false });
+                document.addEventListener('mouseup', stopLogDrag);
+                document.addEventListener('touchend', stopLogDrag);
+            }
+            
+            function logDrag(e) {
+                if (!isDraggingLog) return;
+                if (e.cancelable) e.preventDefault(); // 阻止 iOS 橡皮筋回弹
+                
+                const clientY = (e.touches && e.touches.length > 0) ? e.touches[0].clientY : e.clientY;
+                const totalHeight = window.innerHeight;
+                let newHeight = totalHeight - clientY;
+                
+                // 调节范围保护
+                if (newHeight < 100) newHeight = 100;
+                if (newHeight > totalHeight - 150) newHeight = totalHeight - 150;
+                
+                logContainer.style.height = `${newHeight}px`;
+                localStorage.setItem('appview_log_height', newHeight);
+                
+                // 👈【核心数学对齐校正】：
+                // 用拖拽开始时锁定的 Y 坐标，减去当前的视口高度，动态计算并写入最新的滚动距离。
+                // 这样就能确保“拖放开始时”显示在最底部的最后一行字，在缩放时雷打不动地钉在最底部！
+                if (logContent) {
+                    let targetScrollTop = dragVisibleBottomY - logContent.clientHeight;
+                    
+                    // 安全边界控制（不能低于 0 且不能超过最大滚动范围）
+                    const maxScroll = logContent.scrollHeight - logContent.clientHeight;
+                    if (targetScrollTop < 0) targetScrollTop = 0;
+                    if (targetScrollTop > maxScroll) targetScrollTop = maxScroll;
+                    
+                    logContent.scrollTop = targetScrollTop;
+                }
+            }
+            
+            function stopLogDrag() {
+                isDraggingLog = false;
+                logContainer.classList.remove('dragging');
+                mainLayout.style.pointerEvents = 'auto';
+                document.body.style.cursor = '';
+                
+                document.removeEventListener('mousemove', logDrag);
+                document.removeEventListener('touchmove', logDrag);
+                document.removeEventListener('mouseup', stopLogDrag);
+                document.removeEventListener('touchend', stopLogDrag);
+                
+                logHeight = parseInt(logContainer.style.height);
+            }
         }
         
         // 自适应拖拽逻辑（已深度整合 ChatGPT 优化机制）
@@ -1530,10 +1832,10 @@
                 } else {
                     let newHeight = clientY;
                     const totalHeight = window.innerHeight;
-                    
-                    // 预留底部参数空间
-                    if (newHeight < 150) newHeight = 150;
-                    if (newHeight > totalHeight - 150) newHeight = totalHeight - 150;
+                    let minHeight = 148;
+                    //if (!isSafari()) minHeight = 147;
+                    if (newHeight < minHeight) newHeight = minHeight;
+                    if (newHeight > totalHeight - minHeight) newHeight = totalHeight - minHeight;
                     
                     viewerContainer.style.flex = `0 0 ${newHeight}px`;
                     localStorage.setItem('appview_preview_height', newHeight); 
@@ -1600,6 +1902,7 @@
             }
             const batchInput = document.getElementById('input-batch-count');
             const batchCount = batchInput ? Math.max(1, parseInt(batchInput.value) || 1) : 1;
+            batchInput.value = batchCount;
             
             window.comfyApp.queuePrompt(0, batchCount); 
         });
