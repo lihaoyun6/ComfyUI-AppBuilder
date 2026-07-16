@@ -17,6 +17,8 @@
             --title: #AAAAAA;
             --border: #333333;
             --border-neg: #D8D8D8;
+            --shadow: rgb(255,255,255,0.1);
+            --red: #dc4125;
         }
         
         /* 🌓 浅色主题（点击按钮时激活） */
@@ -32,6 +34,8 @@
             --title: #555555;
             --border: #D8D8D8;
             --border-neg: #333333;
+            --shadow: rgb(0,0,0,0.1);
+            --red: #dc4125;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
@@ -92,24 +96,56 @@
             pointer-events: none; user-select: none; -webkit-user-drag: none; 
         }
 
-        /* 画廊默认样式（手机竖屏：缩略图 50px） */
         .gallery-container { 
-            display: flex; overflow-x: auto; padding: 10px 16px; gap: 8px; height: 72px;
+            display: flex; align-items: center; padding: 0 16px; gap: 8px; height: 72px;
             background-color: var(--panel-bg); border-top: 1px solid var(--border);
-            border-top-left-radius: 18px; border-top-right-radius: 18px;
-            overflow-y: hidden; touch-action: pan-x;
+            border-top-left-radius: 18px; border-top-right-radius: 18px; padding-top: 8px;
+            overflow: hidden; /* 👈 彻底锁死外层滚动，阻断弹性影响 */
         }
-        .gallery-container::-webkit-scrollbar { display: none; }
+        
+        /* 2. 内层滚动区：专门负责图片的排布与弹性横向滚动 */
+        .gallery-scroll-wrap {
+            flex: 1; display: flex; overflow-x: auto; overflow-y: hidden; align-items: center;
+            height: 100%; gap: 8px; touch-action: pan-x; padding: 5px 0;
+        }
+        .gallery-scroll-wrap::-webkit-scrollbar { display: none; }
+        
+        /* 3. 历史图片尺寸 */
         .gallery-item {
-            width: 60px; height: 60px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
+            height: 60px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
             border: 2px solid var(--border); cursor: pointer; user-select: none; -webkit-user-drag: none;
+        }
+        
+        /* 4. 清除按钮：作为静止的兄弟节点，彻底免疫弹性回弹 */
+        .gallery-clear-btn {
+            flex-shrink: 0;
+            width: 45px; height: 60px; border-radius: 8px;
+            background-color: #444; border: none;
+            color: #FFF; font-size: 18px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .gallery-clear-btn:hover { filter: brightness(1.2); }
+        .gallery-item-placeholder {
+            width: 60px; height: 60px; border-radius: 6px; flex-shrink: 0;
+            background-color: var(--panel-bg); border: 2px solid var(--border);
+            animation: galleryPulse 1.5s infinite ease-in-out;
+        }
+        @keyframes galleryPulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 0.3; }
+            100% { opacity: 0.6; }
         }
 
         .status-badge {
-            position: absolute; top: 10px; right: 10px; background: var(--border); height: 24px;
+            position: absolute; top: 10px; right: 50px; background: var(--border); height: 24px;
             padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: var(--title); z-index: 10;
             border: 1px solid var(--title); text-shadow: 0px 1px 0px var(--panel-bg);
         }
+        @supports (-webkit-hyphens: none) {
+            .status-badge { right: 55px; }
+        }
+        
+        .back-badge { display: none; width: 32px !important; left: 10px; right: auto; color: #FFF; background-color: #d13d22; border: 1px solid #e6583e; text-shadow: none;}
 
         /* 拖拽调节器 */
         .resizer {
@@ -124,7 +160,7 @@
         /* 右侧面板 */
         .right-panel {
             flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; border-top: 2px solid var(--border);
-            box-shadow: 0px 0px 30px rgb(0,0,0,0.1); border-top-left-radius: 18px; border-top-right-radius: 18px;
+            box-shadow: 0px 0px 30px var(--shadow); border-top-left-radius: 18px; border-top-right-radius: 18px;
         }
 
         /* 紧凑参数区：由于画廊手机端在最下侧，Padding只需要 150px（按钮+画廊） */
@@ -288,7 +324,7 @@
         .bottom-action-bar {
             position: absolute; bottom: 0; left: 0; width: 100%; background-color: var(--panel-bg); z-index: 100; display: flex;
             flex-direction: column; padding-bottom: env(safe-area-inset-bottom); border-top-left-radius: 19px; border-top-right-radius: 19px;
-            box-shadow: 0px 0px 30px rgb(0,0,0,0.1); border-top: 1px solid var(--border); 
+            box-shadow: 0px 0px 30px var(--shadow); border-top: 1px solid var(--border); 
         }
         
         .button-group { display: flex; gap: 10px; padding: 8px 16px 10px 16px; }
@@ -303,7 +339,7 @@
         /* 👇 修改：开始生成按钮。采用蓝色（#3E8AE2），增加鼠标经过高光 */
         .btn-run-wrapper { position: relative; flex: 3; display: flex; }
         .btn-run { width: 100%; background-color: #3E8AE2; }
-        .btn-run:hover { filter: brightness(1.15); }
+        .btn-run:hover { filter: brightness(1.2); }
         .queue-badge {
             display: none; position: absolute; top: -6px; left: -6px; font-size: 13px; font-weight: bold;
             background-color: #F44336 !important; color: #FFFFFF !important; height: 26px; min-width: 26px;
@@ -312,8 +348,8 @@
         }
         
         /* 👇 修改：停止按钮。采用深红色（#A6433F），宽度为 60px 的紧凑正方形，增加鼠标经过高光 */
-        .btn-stop { background-color: #d13d22; flex: 1; font-size: 20px !important; }
-        .btn-stop:hover { filter: brightness(1.15); }
+        .btn-stop { background-color: var(--red); flex: 1; font-size: 20px !important; }
+        .btn-stop:hover { filter: brightness(1.2); }
         
         /* 👇【新增：SEED 专属控件整体包装器与下拉动作菜单样式】 */
         .seed-wrapper { display: flex; flex-direction: column; gap: 6px; width: 100%; }
@@ -376,19 +412,15 @@
         .number-input[type=number] { -moz-appearance: textfield; }
         .btn-batch-input {
             background-color: var(--border) !important; border: 1px solid #555 !important; border-radius: 8px;
-            flex: 0.5; color: #fff;  text-align: center; outline: none; touch-action: manipulation;
+            flex: 45px 0 0; color: #fff; text-align: center; outline: none; touch-action: manipulation;
+            padding-left: 4px !important; padding-right: 4px !important;
         }
         
         .theme-toggle-btn {
-            position: absolute; top: 10px; left: 10px; padding: 3px 10px; right: auto; cursor: pointer;
+            position: absolute; top: 10px; right: 10px; padding: 3px 10px; cursor: pointer;
             text-shadow: 0px 0px 1px var(--text) !important; transition: transform 0.2s ease;
         }
         .theme-toggle-btn:hover { transform: scale(1.1); }
-        
-        .terminal-badge { top: 10px; left: 50px; padding-bottom: 4px; text-shadow: 0px -1px 0px !important;}
-        @supports (-webkit-hyphens: none) {
-            .terminal-badge { left: 55px; padding-bottom: 10px; }
-        }
         
         /* 👇【修改】：将终端展示区域完美适配到弹窗容器中，字体保持高对比度等宽 */
         .log-drawer-body {
@@ -439,6 +471,78 @@
         /* 原有的 log-drawer-body 修改：去掉圆角和边框适应抽屉 */
         .log-drawer-body { flex: 1; border: none; border-radius: 0; height: auto; }
         
+        .header-bar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between; /* 按钮群在左，指示器在右 */
+            align-items: center;
+            z-index: 1000;
+            gap: 10px; 
+            pointer-events: none; /* 穿透未被按钮占用的空白区域 */
+        }
+        
+        .header-btn-group {
+            display: flex;
+            flex-shrink: 0; 
+            height: 36px;
+            gap: 1.5px; /* 👈 每个按钮之间精确间隔 1px */
+            background-color: var(--border); /* 用边框色作为背景，gap 处就会自然呈现 1px 分割线 */
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            pointer-events: auto; /* 恢复按钮区域的点击 */
+            box-shadow: 0px 0px 30px var(--shadow);
+        }
+        
+        .header-btn {
+            background-color: var(--panel-bg);
+            border: none;
+            color: var(--title);
+            height: 100%;
+            padding: 0 12px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+            cursor: pointer;
+            white-space: nowrap; 
+        }
+        .header-btn:hover { background-color: var(--border); }
+        
+        /* 状态指示器 */
+        .header-status-badge {
+            background-color: var(--panel-bg);
+            border: 1.5px solid var(--border);
+            color: var(--title);
+            height: 36px;
+            padding: 0 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+            /* 👈【核心新增】：自适应无损缩水技术 */
+            flex-shrink: 1;          /* 允许空间不够时收缩 */
+            min-width: 0;            /* 开启 Flex 缩水保护，打破容器默认最小内容宽度限制 */
+            
+            /* 👈【核心新增】：经典文本溢出 Ellipsis 省略号排版 */
+            display: block;          /* 设为 block 确保 text-overflow 生效 */
+            line-height: 34px;       /* 32px高度扣除上下边框各1px，30px行高可完美垂直居中 */
+            text-align: center;
+            white-space: nowrap;     /* 强行不换行 */
+            overflow: hidden;        /* 隐藏超出边界的内容 */
+            text-overflow: ellipsis; /* 超出部分自动渲染为优雅的 "..." */
+            box-shadow: 0px 0px 30px var(--shadow);
+        }
+        
         /* 电脑端响应式重写 */
         @media (min-width: 768px) {
             /* 👈 核心修改：body 永远保持垂直排布，把横向排布交给 main-layout */
@@ -452,8 +556,11 @@
             }
             
             /* 横屏PC端画廊高度 */
-            .gallery-container { flex: 0 0 100px !important; height: 120px !important; }
-            .gallery-item { width: 80px !important; height: 80px !important; }
+            .gallery-container { flex: 0 0 100px !important; height: 100px !important; border-radius: 0px; padding-top: 0px; }
+            .gallery-item { height: 80px !important; }
+            .gallery-clear-btn { height: 40px !important; font-size: 14px; transform: translateX(6px); }
+            .gallery-item-placeholder { width: 80px !important; height: 80px !important; }
+            
             
             /* 之前修复的参数栏错位代码（保持绝对定位） */
             .resizer {
@@ -467,12 +574,56 @@
             
             .controls-section { flex: 1; padding-bottom: 80px; padding-left: 18px; }
             .bottom-action-bar { position: absolute; width: 100%; height: 100px; } 
-            .button-group { display: flex; gap: 10px; padding: 16px; padding-top: 30px; }
+            .button-group { display: flex; gap: 10px; padding-left: 0px; padding-top: 30px; }
             .bottom-action-bar, .gallery-container, .resizer { border-radius: 0px; box-shadow: none; }
+        }
+        
+        /* 👇【全新新增】：悬浮启动页样式 */
+        .splash-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100dvh;
+            background-color: var(--bg); /* 自动同步深浅色背景，防止瞬间刺眼闪烁 */
+            z-index: 999999; /* 确保处于绝对最顶层 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.3s;
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* 渐隐隐藏状态 */
+        .splash-screen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+        .splash-content { text-align: center; animation: splashZoomIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .splash-icon { font-size: 64px; display: block; margin-bottom: 16px; }
+        .splash-title {
+            font-size: 24px; font-weight: bold; color: var(--text); letter-spacing: 1.5px;
+            font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui,sans-serif;
+        }
+        
+        /* 缩放加微透入场动效 */
+        @keyframes splashZoomIn {
+            from {
+                transform: scale(0.85);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
     </style>
 </head>
 <body>
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <span class="splash-icon">🎛️</span>
+            <div class="splash-title">PowerPanel AppView</div>
+        </div>
+    </div>
+    
     <!-- 顶端隐性进度条 -->
     <div class="progress-bar-container">
         <div class="progress-bar-fill" id="progress-bar"></div>
@@ -483,13 +634,24 @@
         <!-- 视图面板：包揽大图预览 -->
         <div class="viewer-container">
             <div class="preview-section">
-                <button class="theme-toggle-btn status-badge" id="theme-toggle">🌓</button>
-                <!-- 👈 删除了这里的 terminal-badge 按钮 -->
-                <span class="status-badge" id="status-text" data-i18n="label_ready">Ready</span>
+                <div class="header-bar">
+                    <div class="header-btn-group">
+                        <button class="header-btn" id="iframe-close-btn" style="display: none;" data-i18n="back_to_comfyui">&#10094; Back</button>
+                        <button class="header-btn" id="refresh-btn" style="display: none;">↻</button>
+                        <button class="header-btn" id="theme-toggle" style="text-shadow: 0.25px 0.25px 0px var(--title)">◐</button>
+                    </div>
+                    <span class="header-status-badge" id="status-text" data-i18n="label_ready">Ready</span>
+                </div>
+                
                 <img id="main-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23555'/><text x='50%' y='50%' fill='%23999' font-size='16' text-anchor='middle' alignment-baseline='middle'>No Media</text></svg>">
             </div>
-            <!-- 结果历史画廊 -->
-            <div class="gallery-container" id="gallery"></div>
+            <!-- 结果历史画廊挂载点（外层：静止不滚动） -->
+            <div class="gallery-container" id="gallery">
+                <!-- 滚动图片区域（内层：专门负责滚动） -->
+                <div class="gallery-scroll-wrap" id="gallery-scroll"></div>
+                <!-- 清除按钮（完全隔离在滚动区之外） -->
+                <button class="gallery-clear-btn" id="btn-clear-gallery">⌫</button>
+            </div>
         </div>
         
         <div class="right-panel">
@@ -557,6 +719,60 @@
         
         let logHeight = localStorage.getItem('appview_log_height') || 250;
         let isLogOpen = false;
+        
+        // 👇【核心重构 1】：脚本刚运行，瞬间同步提取历史记录！绝不给任何消息覆盖的机会！
+        let galleryData = [];
+        try {
+            const historyStr = localStorage.getItem('appview_gallery_history');
+            if (historyStr) {
+                galleryData = JSON.parse(historyStr);
+                if (!Array.isArray(galleryData)) galleryData = [];
+            }
+        } catch(e) {
+            galleryData = [];
+        }
+        
+        // 📐【自包含完整版 - 物理容器隔离渲染】
+        function renderGalleryItem(src, isPrepend) {
+            // 👇【核心修改】：将目标容器指定为新加入的内层滚动区！
+            const galleryScroll = document.getElementById('gallery-scroll');
+            if (!galleryScroll) return;
+            
+            // 查重：如果 DOM 里已经有这张图（比如重新生成了同名图），先把它删掉防止重复
+            //const existingItems = Array.from(document.querySelectorAll('.gallery-item, .gallery-item-placeholder'));
+            //const duplicate = existingItems.find(el => el.src === src || (el.tagName === 'IMG' && el.src.endsWith(src)));
+            //if (duplicate) duplicate.remove();
+            
+            const placeholder = document.createElement('div');
+            placeholder.className = 'gallery-item-placeholder';
+            
+            // 🟢 因为清除按钮在滚动区外面，这里 append 变得异常简单，不需要再去判定 clearBtn 了
+            if (isPrepend) {
+                galleryScroll.insertBefore(placeholder, galleryScroll.firstChild);
+            } else {
+                galleryScroll.appendChild(placeholder); 
+            }
+            
+            const testImg = new Image();
+            testImg.onload = () => {
+                const imgEl = document.createElement('img');
+                imgEl.src = src;
+                imgEl.className = 'gallery-item';
+                imgEl.onclick = function() {
+                    document.getElementById('main-preview').src = this.src;
+                    openLightbox(this.src);
+                };
+                placeholder.replaceWith(imgEl);
+            };
+            
+            testImg.onerror = () => {
+                placeholder.remove();
+                galleryData = galleryData.filter(url => url !== src);
+                localStorage.setItem('appview_gallery_history', JSON.stringify(galleryData));
+            };
+            
+            testImg.src = src;
+        }
         
         const savedTheme = localStorage.getItem('appview_theme') || 'dark';
         if (savedTheme === 'light') {
@@ -727,29 +943,21 @@
                         const imgUrl = `/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder)}&type=${encodeURIComponent(img.type)}`;
                         document.getElementById('main-preview').src = imgUrl;
                         
-                        const imgEl = document.createElement('img');
-                        imgEl.src = imgUrl;
-                        imgEl.className = 'gallery-item';
+                        // 🟢 先操作数据：去重、前置、存盘（这一步绝对安全，不怕 DOM 没准备好）
+                        //galleryData = galleryData.filter(url => url !== imgUrl);
+                        galleryData.unshift(imgUrl);
+                        if (galleryData.length > 1000) galleryData = galleryData.slice(0, 1000);
+                        localStorage.setItem('appview_gallery_history', JSON.stringify(galleryData));
                         
-                        // 点击小图：大图载入并弹起灯箱大图
-                        imgEl.onclick = function() {
-                            document.getElementById('main-preview').src = this.src;
-                            openLightbox(this.src); 
-                        };
+                        // 🟢 后渲染 DOM：插入到画廊最前面
+                        renderGalleryItem(imgUrl, true);
                         
-                        const gallery = document.getElementById('gallery');
-                        gallery.insertBefore(imgEl, gallery.firstChild);
-                        
-                        // 👇【核心修改】：如果此时灯箱正开着，动态在后台静默重组播放列表，并校正索引，防止画面跳动
+                        // 灯箱更新逻辑（保持不变）
                         const lightboxModal = document.getElementById('lightbox-modal');
                         if (lightboxModal && lightboxModal.style.display === 'flex') {
-                            const currentViewedUrl = currentImagesList[currentLightboxIndex]; // 记录目前正在看的大图
-                            
-                            // 重新搜集包含最新生成图片的完整列表
+                            const currentViewedUrl = currentImagesList[currentLightboxIndex]; 
                             const items = Array.from(document.querySelectorAll('.gallery-item'));
                             currentImagesList = items.map(i => i.src);
-                            
-                            // 反查并更新当前看的大图在新列表里的新位置（防止索引因新图插入发生漂移导致切图错乱）
                             currentLightboxIndex = currentImagesList.indexOf(currentViewedUrl);
                             if (currentLightboxIndex === -1) currentLightboxIndex = 0;
                         }
@@ -827,9 +1035,8 @@
                 if (nodeId && window.comfyApp) {
                     const node = window.comfyApp.graph.getNodeById(nodeId);
                     if (node) {
-                        let nodeName = node.title || node.type || `Node #${nodeId}`;
-                        if (nodeName.length > 50) nodeName = nodeName.substring(0, 50) + "..";
-                        statusText.innerText = nodeName;
+                        const nodeName = node.title || node.type || `Node #${nodeId}`;
+                        statusText.innerText = nodeName; 
                         statusText.style.color = "var(--primary)";
                     }
                 }
@@ -840,12 +1047,26 @@
         window.addEventListener('DOMContentLoaded', async () => {
             await loadI18n();
             
+            setTimeout(() => {
+                const splash = document.getElementById('splash-screen');
+                if (splash) {
+                    splash.classList.add('fade-out'); // 触发 0.5s 渐隐
+                    
+                    // 渐隐动画结束后（500ms），物理删除该元素，释放内存，保证后续交互绝无卡顿
+                    setTimeout(() => { splash.remove(); }, 300);
+                }
+            }, 600);
+            
             const urlParams = new URLSearchParams(window.location.search);
             const nodeId = urlParams.get('nodeId');
             
-            if (nodeId && window.opener && !window.opener.closed) {
-                const parentApp = window.opener.comfyApp;
-                const parentApi = window.opener.comfyApi;
+            // 👇【核心修改 2】：自动判定是新标签页（window.opener）还是 Iframe 容器（window.parent）
+            const isIframe = window.parent !== window;
+            const parentWindow = isIframe ? window.parent : (window.opener && !window.opener.closed ? window.opener : null);
+            
+            if (nodeId && parentWindow) {
+                const parentApp = parentWindow.comfyApp;
+                const parentApi = parentWindow.comfyApi;
                 
                 window.comfyApp = parentApp;
                 window.comfyApi = parentApi;
@@ -853,30 +1074,30 @@
                 const parentNode = parentApp.graph.getNodeById(nodeId);
                 if (parentNode) {
                     sourceNodeId = nodeId;
-                    parentNode.registerAppWindow(window);
+                    
+                    // 兼容注册
+                    if (parentNode.registerAppWindow) parentNode.registerAppWindow(window);
                     
                     const jsonStr = parentNode.widgets.find(w => w.name === "config_json")?.value || "{}";
                     renderDynamicForm(JSON.parse(jsonStr));
                     
-                    /// 1. 初始化拖拽事件监听
+                    // 1. 初始化拖拽
                     initResizeLogic();
                     initLogResizeLogic();
                     
-                    // 2. 👈【核心修改】：首次加载时传入 true 触发初始化排版，并在窗口调整大小时传入 false 调度过渡清理
                     handleResponsiveLayout(true); 
                     window.addEventListener('resize', () => handleResponsiveLayout(false));
                     
-                    // 3. 初始化灯箱事件
-                    // 初始化灯箱事件
                     initLightboxEvents();
                     
-                    // 👇【全新替换】：底部控制台抽屉逻辑
+                    // 控制台抽屉
                     const logContainer = document.getElementById('log-drawer-container');
                     const logBtn = document.getElementById('console-toggle');
                     
-                    if (localStorage.getItem('appview_log_height')) logHeight = parseInt(localStorage.getItem('appview_log_height'));
+                    if (localStorage.getItem('appview_log_height')) {
+                        logHeight = parseInt(localStorage.getItem('appview_log_height'));
+                    }
                     
-                    // 👇【修改】：绑定重构后的点击切换
                     logBtn.onclick = (e) => {
                         e.stopPropagation();
                         isLogOpen = !isLogOpen;
@@ -887,7 +1108,7 @@
                             if (isDesktop) {
                                 logContainer.style.height = `${logHeight}px`;
                             } else {
-                                applyMobileLayout(logHeight); // 👈 统一由引擎接管手机端
+                                applyMobileLayout(logHeight);
                             }
                             setTimeout(() => {
                                 const content = document.getElementById('log-content');
@@ -897,18 +1118,68 @@
                             if (isDesktop) {
                                 logContainer.style.height = '0px';
                             } else {
-                                applyMobileLayout(0); // 👈 关闭时传 0，大图会自动恢复原高度！
+                                applyMobileLayout(0);
                             }
                         }
                     };
                     
-                    // 3. 👇【核心修改】：启动后台静默轮询，无需拉下把手，它会在后台默默收集所有生成日志，随点随看！
                     startLogPolling();
                     
                     document.getElementById('theme-toggle').onclick = () => {
                         const isLight = document.documentElement.classList.toggle('light-theme');
                         localStorage.setItem('appview_theme', isLight ? 'light' : 'dark');
                     };
+                    
+                    document.getElementById('refresh-btn').onclick = (e) => {
+                        e.stopPropagation();
+                        location.reload();
+                    };
+                    
+                    document.getElementById('theme-toggle').onclick = () => {
+                        const isLight = document.documentElement.classList.toggle('light-theme');
+                        localStorage.setItem('appview_theme', isLight ? 'light' : 'dark');
+                    };
+                    
+                    // 👇【核心重构 3】：页面加载完毕后，直接把之前同步好的全局数据遍历渲染出来
+                    galleryData.forEach(src => {
+                        renderGalleryItem(src, false);
+                    });
+                    
+                    // 绑定扫帚按钮一键清除历史
+                    const clearBtn = document.getElementById('btn-clear-gallery');
+                    if (clearBtn) {
+                        clearBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            const confirmText = t("confirm_clear_gallery", "Are you sure you want to clear the gallery history?");
+                            if (confirm(confirmText)) {
+                                document.querySelectorAll('.gallery-item, .gallery-item-placeholder').forEach(el => el.remove());
+                                // 清空数据和缓存
+                                galleryData = [];
+                                localStorage.removeItem('appview_gallery_history');
+                            }
+                        };
+                    }
+                    
+                    // 👇【新增 3】：如果是 Iframe 模式，激活右上角关闭按钮，点击它可隐藏 Iframe 返回画布
+                    if (isIframe) {
+                        const closeBtn = document.getElementById('iframe-close-btn');
+                        if (closeBtn) {
+                            closeBtn.style.display = 'flex'; // 显示关闭按钮
+                            closeBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                const parentIframe = parentWindow.document.getElementById('appview-iframe');
+                                if (parentIframe) parentIframe.style.display = 'none';
+                            };
+                        }
+                        const refreshBtn = document.getElementById('refresh-btn');
+                        if (refreshBtn) {
+                            refreshBtn.style.display = 'flex'; // 👈 动态展现它
+                            refreshBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                location.reload();
+                            };
+                        }
+                    }
                 } else {
                     document.getElementById('dynamic-form').innerHTML = 
                     `<div style="text-align:center; padding: 20px; color:#f44336; line-height: 1.6;">
@@ -1647,21 +1918,34 @@
             if (lightboxModal) lightboxModal.style.display = 'none';
         }
         
+        // 🖼️【灯箱控制 1】：更新大图及边缘按钮状态
         function updateLightboxUI() {
             const imgUrl = currentImagesList[currentLightboxIndex];
             document.getElementById('lightbox-img').src = imgUrl;
             document.getElementById('main-preview').src = imgUrl;
+            
+            const prevBtn = document.getElementById('lightbox-prev');
+            const nextBtn = document.getElementById('lightbox-next');
+            
+            if (prevBtn && nextBtn) {
+                // 🟢【新增】：如果到第一张，隐藏左箭头；如果到最后一张，隐藏右箭头，直观提示用户已到尽头
+                prevBtn.style.display = (currentLightboxIndex === 0) ? 'none' : 'flex';
+                nextBtn.style.display = (currentLightboxIndex === currentImagesList.length - 1) ? 'none' : 'flex';
+            }
         }
         
+        // 🖼️【灯箱控制 2】：非循环翻页逻辑
         function navigateLightbox(dir) {
             if (currentImagesList.length <= 1) return;
-            currentLightboxIndex += dir;
             
-            if (currentLightboxIndex < 0) {
-                currentLightboxIndex = currentImagesList.length - 1;
-            } else if (currentLightboxIndex >= currentImagesList.length) {
-                currentLightboxIndex = 0;
+            const nextIndex = currentLightboxIndex + dir;
+            
+            // 🚫【核心修改】：阻止循环切换。超出边界（小于0或大于最后一张）时直接拦截，不做任何操作
+            if (nextIndex < 0 || nextIndex >= currentImagesList.length) {
+                return; 
             }
+            
+            currentLightboxIndex = nextIndex;
             updateLightboxUI();
         }
         

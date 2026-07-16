@@ -95,5 +95,7 @@
   "loading_ui": "正在加载...",
   "console_title": "🖥 运行日志",
   "lastSeed_desc": "恢复上一个随机种",
-  "randomSeed_desc": "生成新的随机种"
+  "randomSeed_desc": "生成新的随机种",
+  "back_to_comfyui": "\u276e 返回",
+  "confirm_clear_gallery": "确认要清空画廊历史记录吗?"
 }
