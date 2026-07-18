@@ -1,20 +1,16 @@
-# ComfyUI-PowerPanel (Power AppView) 
-Add unified control panels to your workflows and convert them to WebApp without using Node 2.0    
+# ComfyUI-AppBuilder 
+Convert any workflow into an easy-to-use WebApp interface without enabling Node2.0  
 **[[📃中文版](./README_zh.md)]** 
 
 ## Preview
-![](./preview.png)  
+https://github.com/user-attachments/assets/67e1ca0f-6c99-4674-9e06-26770ffb2d94
 
 ## Installation
-
-#### Install the node:
 ```bash
 cd ComfyUI/custom_nodes
-git clone https://github.com/lihaoyun6/PowerPanel.git
+git clone https://github.com/lihaoyun6/AppBuilder.git
 ```
-
-## Usage 
-https://github.com/user-attachments/assets/94b4cf52-56a1-454e-af9a-cd5a23c94566  
+Or install it from the Manager.
 
 ## Credits
 - [ComfyUI](https://github.com/comfyanonymous/ComfyUI) @comfyanonymous  

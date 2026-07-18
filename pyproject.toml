@@ -1,7 +1,7 @@
 [project]
-name = "ComfyUI-PowerPanel"
-description = "Add unified control panels to your workflows and convert them to WebApp without using Node 2.0"
-version = "0.1.1"
+name = "ComfyUI-AppBuilder"
+description = "Convert any workflow into an easy-to-use WebApp interface without enabling Node2.0"
+version = "0.1.2"
 license = {file = "LICENSE"} 
 classifiers = [
 #     # For OS-independent nodes (works on all operating systems)
@@ -23,14 +23,14 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Repository = "https://github.com/lihaoyun6/ComfyUI-PowerPanel"
+Repository = "https://github.com/lihaoyun6/ComfyUI-AppBuilder"
 #  Used by Comfy Registry https://registry.comfy.org
-Documentation = "https://github.com/lihaoyun6/ComfyUI-PowerPanel/wiki"
-"Bug Tracker" = "https://github.com/lihaoyun6/ComfyUI-PowerPanel/issues"
+Documentation = "https://github.com/lihaoyun6/ComfyUI-AppBuilder/wiki"
+"Bug Tracker" = "https://github.com/lihaoyun6/ComfyUI-AppBuilder/issues"
 
 [tool.comfy]
 PublisherId = "lhy666"
-DisplayName = "ComfyUI-PowerPanel"
+DisplayName = "ComfyUI-AppBuilder"
 Icon = ""
 includes = [] 
 # "requires-comfyui" = ">=1.0.0"  # ComfyUI version compatibility

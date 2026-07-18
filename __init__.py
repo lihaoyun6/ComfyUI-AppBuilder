@@ -7,14 +7,53 @@ import folder_paths
 from aiohttp import web
 from server import PromptServer
 
-class PowerParameterPanel:
+class AppBuilder:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "config_json": ("STRING", {"default": '{}'}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
+                "prompt": "PROMPT"
+            }
+        }
+    
+    # 允许动态任意类型的输出
+    RETURN_TYPES = tuple(["*"])
+    RETURN_NAMES = tuple(["any"])
+    FUNCTION = "main"
+    CATEGORY = "AppBuilder"
+    
+    def main(self, **kwargs):
+        return ()
+
+class AppBuilderBypasser:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "group_name": ("STRING", {"default": ""}),
+                "bypasser_name": ("STRING", {"default": ""}),
+            },
+        }
+    
+    # 🔥 现在输出为 BYPASSER 类型，只能连给 Builder 节点的左侧
+    RETURN_TYPES = ("BYPASSER",)
+    RETURN_NAMES = ("bypasser",)
+    FUNCTION = "main"
+    CATEGORY = "AppBuilder"
+    
+    def main(self, **kwargs):
+        return ()
+
+class AppBuilderAdv:
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "config_json": ("STRING", {
-                    "multiline": True,
-                    "placeholder": "JSON Configuration",
                     "default": '{"string":{"type": "string","name": "Usage","placeholder": "Click [⚙️ Configuration Panel] button to generate the widgets you need.","multiline":true,"tooltip":"You can delete this sample widget"}}'
                 }),
                 "live_preview": ("BOOLEAN", {"default": False}),
@@ -28,7 +67,7 @@ class PowerParameterPanel:
     RETURN_TYPES = ("parameters",)
     RETURN_NAMES = ("parameters",)
     FUNCTION = "execute"
-    CATEGORY = "PowerPanel"
+    CATEGORY = "AppBuilder"
     DESCRIPTION = "Generate custom control panel and application view."
     
     # 使用这个类方法来绕过 ComfyUI 后端的严格类型检查
@@ -83,7 +122,7 @@ class ParametersUnpacker:
     RETURN_TYPES = tuple(["*"] * 32)
     RETURN_NAMES = tuple(["*"] * 32)
     FUNCTION = "unpack"
-    CATEGORY = "PowerPanel"
+    CATEGORY = "AppBuilder"
     
     def unpack(self, parameters=None):
         try:
@@ -98,7 +137,7 @@ class ParametersUnpacker:
         except Exception:
             raise
 
-@PromptServer.instance.routes.get("/power_panel/ls/{folder}")
+@PromptServer.instance.routes.get("/appbuilder/ls/{folder}")
 async def get_models_list(request):
     folder = request.match_info.get("folder")
     if folder in folder_paths.folder_names_and_paths.keys():
@@ -153,7 +192,7 @@ sys.stderr = LogStreamWrapper(sys.stderr)
 
 
 # 3. 👈【终极升级】：支持增量拉取的日志获取路由。实现刷新不丢历史、多端同时共享日志！
-@PromptServer.instance.routes.get("/power_panel/logs")
+@PromptServer.instance.routes.get("/appbuilder/logs")
 async def get_captured_logs(request):
     try:
         after_id = int(request.query.get("after", 0))
@@ -169,12 +208,16 @@ async def get_captured_logs(request):
     return web.json_response(new_logs)
 
 NODE_CLASS_MAPPINGS = {
-    "PowerParameterPanel": PowerParameterPanel,
+    "AppBuilder": AppBuilder,
+    "AppBuilderBypasser": AppBuilderBypasser,
+    "AppBuilderAdv": AppBuilderAdv,
     "ParametersUnpacker": ParametersUnpacker,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "PowerParameterPanel": "Power Parameter Panel",
+    "AppBuilder": "AppBuilder",
+    "AppBuilderBypasser": "AppBuilder Bypasser",
+    "AppBuilderAdv": "AppBuilder (Advanced)",
     "ParametersUnpacker": "Parameters Unpacker",
 }
 

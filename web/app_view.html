@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PowerPanel AppView</title>
+    <title>ComfyUI AppBuilder</title>
     <style>
         :root {
             color-scheme: dark;
@@ -119,12 +119,12 @@
         /* 4. 清除按钮：作为静止的兄弟节点，彻底免疫弹性回弹 */
         .gallery-clear-btn {
             flex-shrink: 0;
-            width: 45px; height: 60px; border-radius: 8px;
-            background-color: #444; border: none;
+            width: 3rem; height: 60px; border-radius: 8px;
+            background-color: var(--border); border: none;
             color: #FFF; font-size: 18px; font-weight: bold; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
-        .gallery-clear-btn:hover { filter: brightness(1.2); }
+        .gallery-clear-btn:hover { color: var(--red); }
         .gallery-item-placeholder {
             width: 60px; height: 60px; border-radius: 6px; flex-shrink: 0;
             background-color: var(--panel-bg); border: 2px solid var(--border);
@@ -170,9 +170,9 @@
         }
         .controls-section::-webkit-scrollbar { display: none; }
         .control-group { margin-bottom: 8px;}
-        .control-group label.control-title { 
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 3px; font-size: 13px; color: var(--title); 
+        .control-group label.control-title {
+            display: block; margin-bottom: 3px; font-size: 13px; color: var(--title);
+            min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         
         /* 👇 新增：Slider 数值专用小气泡样式，采用等宽字体防止数字跳动时框体抖动 */
@@ -254,7 +254,7 @@
         .numeric-input-wrapper input { flex: 1; text-align: center; }
         .btn-numeric-adjust {
             background: var(--panel-bg); border: 1px solid var(--border); color: var(--title); border-radius: 8px;
-            width: 3rem; height: 36px; cursor: pointer; font-size: 18px; font-weight: bold;
+            width: 2.5rem; height: 36px; cursor: pointer; font-size: 18px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; user-select: none;
         }
         .btn-numeric-adjust:active { background: var(--border); }
@@ -283,7 +283,7 @@
         /* 多行编辑包装器 */
         .input-with-button { display: flex; gap: 6px; width: 100%; }
         .btn-edit-multiline {
-            background: var(--panel-bg); border: 1px solid var(--border); color: #fff; border-radius: 8px; width: 3rem;
+            background: var(--panel-bg); border: 1px solid var(--border); color: #fff; border-radius: 8px; width: 2.5rem;
             flex-shrink: 0; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
         }
         .btn-edit-multiline:active { background: var(--border); }
@@ -307,7 +307,7 @@
         /* 👇 切换预览按钮：移至上传框右侧，外观尺寸与 📝 保持统一 */
         .uploader-preview-toggle {
             background: var(--panel-bg); border: 1px solid var(--border); color: #fff; border-radius: 8px;
-            width: 3rem; cursor: pointer; font-size: 16px; display: none; align-items: center;
+            width: 2.5rem; cursor: pointer; font-size: 16px; display: none; align-items: center;
             justify-content: center; user-select: none;
         }
         .uploader-preview-toggle:active { background: #2a2a2a; }
@@ -350,16 +350,6 @@
         /* 👇 修改：停止按钮。采用深红色（#A6433F），宽度为 60px 的紧凑正方形，增加鼠标经过高光 */
         .btn-stop { background-color: var(--red); flex: 1; font-size: 20px !important; }
         .btn-stop:hover { filter: brightness(1.2); }
-        
-        /* 👇【新增：SEED 专属控件整体包装器与下拉动作菜单样式】 */
-        .seed-wrapper { display: flex; flex-direction: column; gap: 6px; width: 100%; }
-        .seed-action-row {
-            display: flex; justify-content: space-between;
-            align-items: center; gap: 8px; width: 100%; margin-top: 4px;
-        }
-        .seed-action-label { font-size: 13px; color: var(--title); white-space: nowrap;  user-select: none; }
-        .seed-action-select { flex: 1; min-height: 36px; cursor: pointer; outline: none; text-align: right; text-align-last: right; }
-        .seed-action-select:focus { border-color: var(--primary); }
 
         /* 模态浮层基类 */
         .modal {
@@ -412,7 +402,7 @@
         .number-input[type=number] { -moz-appearance: textfield; }
         .btn-batch-input {
             background-color: var(--border) !important; border: 1px solid #555 !important; border-radius: 8px;
-            flex: 45px 0 0; color: #fff; text-align: center; outline: none; touch-action: manipulation;
+            flex: 3rem 0 0; color: #fff; text-align: center; outline: none; touch-action: manipulation;
             padding-left: 4px !important; padding-right: 4px !important;
         }
         
@@ -424,8 +414,8 @@
         
         /* 👇【修改】：将终端展示区域完美适配到弹窗容器中，字体保持高对比度等宽 */
         .log-drawer-body {
-            width: 100%; height: 100%; background: #171717; border: 1px solid var(--border); border-radius: 8px; padding: 12px;
-            font-family: Consolas, Monaco, "Courier New", monospace; font-size: 12px; color: #ccc; overflow-y: auto;
+            flex: 1; height: auto; width: 100%; background: #171717; color: #ccc; padding: 12px; 
+            font-family: Consolas, Monaco, "Courier New", monospace; font-size: 12px; overflow-y: auto;
             -webkit-overflow-scrolling: touch; user-select: text !important; -webkit-user-select: text !important; 
         }
         
@@ -433,19 +423,17 @@
         .log-line { margin-bottom: 3px; word-break: break-all; }
         .log-time { color: #555; margin-right: 6px; }
         .log-tag { font-weight: bold; margin-right: 6px; }
-        .log-line.system { color: #ffeb3b; }
-        .log-line.system .log-tag { color: #ffeb3b; }
-        .log-line.executing { color: #fff; }
-        .log-line.executing .log-tag { color: #fff }
-        .log-line.running { color: #3E8AE2; }
-        .log-line.running .log-tag { color: #3E8AE2; }
-        .log-line.output { color: var(--primary); }
-        .log-line.output .log-tag { color: var(--primary); }
-        .log-line.error { color: var(--danger); }
-        .log-line.error .log-tag { color: var(--danger); }
+        .log-line.white { color: #FFF; }
+        .log-line.white .log-tag { color: #FFF; }
+        .log-line.warning { color: #ffeb3b; }
+        .log-line.warning .log-tag { color: #ffeb3b; }
+        .log-line.green { color: var(--primary); }
+        .log-line.green .log-tag { color: var(--primary); }
+        .log-line.error { color: var(--red); }
+        .log-line.error .log-tag { color: var(--red); }
 
         .btn-console { 
-            background-color: #444; color: #fff; flex: 0 0 45px; font-size: 16px !important;
+            background-color: #444; color: #fff; flex: 0 0 3rem; font-size: 16px !important;
             font-family: monospace; padding-top: 0px; padding-left: 0px;
         }
         .btn-console:hover { filter: brightness(1.2); }
@@ -467,9 +455,6 @@
             flex-shrink: 0; display: flex; justify-content: center; align-items: center; border-top: 2px solid var(--border);
         }
         .log-resizer::after { content: ''; width: 100px; height: 4px; background: #AAAAAA; border-radius: 2px; }
-        
-        /* 原有的 log-drawer-body 修改：去掉圆角和边框适应抽屉 */
-        .log-drawer-body { flex: 1; border: none; border-radius: 0; height: auto; }
         
         .header-bar {
             position: absolute;
@@ -541,6 +526,42 @@
             overflow: hidden;        /* 隐藏超出边界的内容 */
             text-overflow: ellipsis; /* 超出部分自动渲染为优雅的 "..." */
             box-shadow: 0px 0px 30px var(--shadow);
+        }
+        
+        /* 🎲 采用你设计的【Gap 缝隙透出法】三合一胶囊控制组 */
+        .seed-utility-group {
+            display: flex;
+            align-items: center;
+            background-color: var(--border); /* 👈 容器背景使用边框色 */
+            border: 1px solid var(--border); /* 外边框 */
+            border-radius: 8px;
+            overflow: hidden; 
+            flex-shrink: 0;
+            height: 36px; 
+            gap: 1px; /* 👈 每个按钮之间精确间隔 1px，透出底部的 var(--border) 作为分割线 */
+        }
+        
+        /* 胶囊内的独立小按钮 */
+        .btn-seed-util-item {
+            width: 2.5rem; 
+            height: 100%;
+            /* 👈 核心微调：必须设为实心的 `--panel-bg`，以阻挡并盖住底部容器的边框色，仅让 gap 处透出线 */
+            background-color: var(--panel-bg); 
+            border: none; 
+            color: var(--text);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        /* 悬浮与点击时，只对当前按钮的背景色进行亮化/变暗即可 */
+        .btn-seed-util-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        .btn-seed-util-item:active {
+            background-color: var(--border);
         }
         
         /* 电脑端响应式重写 */
@@ -620,7 +641,7 @@
     <div id="splash-screen" class="splash-screen">
         <div class="splash-content">
             <span class="splash-icon">🎛️</span>
-            <div class="splash-title">PowerPanel AppView</div>
+            <div class="splash-title">ComfyUI AppBuilder</div>
         </div>
     </div>
     
@@ -759,7 +780,7 @@
                 imgEl.src = src;
                 imgEl.className = 'gallery-item';
                 imgEl.onclick = function() {
-                    document.getElementById('main-preview').src = this.src;
+                    //document.getElementById('main-preview').src = this.src;
                     openLightbox(this.src);
                 };
                 placeholder.replaceWith(imgEl);
@@ -858,7 +879,7 @@
             logPollInterval = setInterval(async () => {
                 try {
                     // 1. 发起增量拉取请求（传递本地最大 ID）
-                    const res = await fetch(`/power_panel/logs?after=${window._lastLogId}`);
+                    const res = await fetch(`/appbuilder/logs?after=${window._lastLogId}`);
                     if (res.ok) {
                         const logs = await res.json();
                         if (Array.isArray(logs) && logs.length > 0) {
@@ -900,13 +921,15 @@
                 const lineEl = document.createElement('div');
                 
                 // 根据控制台日志文本，自适应匹配高亮颜色
-                let typeClass = 'system';
-                if (cleanText.includes('[ERROR]') || cleanText.includes('[WARNING]') || cleanText.includes('Error') || cleanText.includes('Exception') || cleanText.includes('FAILED')) {
+                let typeClass = 'white';
+                if (cleanText.includes('[ERROR]') || cleanText.includes('Exception') || cleanText.includes('FAILED')) {
                     typeClass = 'error';
+                } else if (cleanText.includes('[WARNING]')) {
+                    typeClass = 'warning'
                 } else if (cleanText.includes('Prompt executed') || cleanText.includes('executed in') || cleanText.includes('[INFO] Prompt executed')) {
-                    typeClass = 'output';
+                    typeClass = 'green';
                 } else if (cleanText.includes('got prompt') || cleanText.includes('[INFO] got prompt') || isProgress) {
-                    typeClass = 'executing';
+                    typeClass = 'white';
                 }
                 
                 lineEl.className = `log-line ${typeClass}`;
@@ -1153,7 +1176,7 @@
                     if (clearBtn) {
                         clearBtn.onclick = (e) => {
                             e.stopPropagation();
-                            const confirmText = t("confirm_clear_gallery", "Clear gallery history?");
+                            const confirmText = t("confirm_clear_gallery", "Clear generation history?");
                             if (confirm(confirmText)) {
                                 document.querySelectorAll('.gallery-item, .gallery-item-placeholder').forEach(el => el.remove());
                                 // 清空数据和缓存
@@ -1194,7 +1217,7 @@
                 document.getElementById('dynamic-form').innerHTML = 
                 `<div style="text-align:center; padding: 20px; color:#f44336; line-height: 1.6;">
                         <p style="font-size: 24px; margin-bottom:10px;">⚠️</p>
-                        <p style="font-size: 14px; font-weight:bold;">${t('connection_lost', 'Connection lost! Please reopen from the original panel.')}</p>
+                        <p style="font-size: 14px; font-weight:bold;">${t('connection_lost', 'Connection lost! Please reopen from the original node.')}</p>
                     </div>`;
             }
         });
@@ -1288,9 +1311,13 @@
                         const idx = node.widgets.indexOf(widget);
                         if (idx > 0) {
                             const seedWidget = node.widgets[idx - 1];
-                            const actionSelect = document.getElementById(`input_action_${seedWidget.name}`);
-                            if (actionSelect) {
-                                actionSelect.value = widget.value;
+                            const modeBtn = document.getElementById(`input_action_btn_${seedWidget.name}`);
+                            
+                            // 👈【核心修改】：同步刷新循环模式切换键上的 Emoji 图标与 title 提示
+                            if (modeBtn) {
+                                const modeIcons = { "fixed": "⏺️", "increment": "⤴️", "decrement": "⤵️", "randomize": "🔀" };
+                                modeBtn.innerText = modeIcons[widget.value] || "🔀";
+                                modeBtn.title = `Mode: ${widget.value}`;
                             }
                         }
                     }
@@ -1320,552 +1347,579 @@
                 const parentWidget = parentNode ? parentNode.widgets.find(w => w.name === key) : null;
                 const currentValue = parentWidget ? parentWidget.value : params.default;
                     
-                    if (type === "INT" || type === "FLOAT") {
-                        const isSlider = params.slider === true || params.display === "slider";
-                        
-                        // 修改后：自适应读取 precision 精度值并强制补齐小数长度（如 0.5 补齐为 0.500）
-                        if (isSlider) {
-                            // 1. 提取精度：若 JSON 带有精度值则强制使用；若无，FLOAT 默认保留 3 位，INT/SEED 保留 0 位
-                            const precision = params.precision !== undefined ? Number(params.precision) : (type === "FLOAT" ? 3 : 0);
-                            
-                            // 2. 初始化时通过 toFixed 补齐到指定精度长度
-                            const formattedInitial = Number(currentValue ?? 0).toFixed(precision);
-                            
-                            label.innerHTML = `<span>${params.name || key}</span><span class="slider-value-badge" id="badge_${key}">${formattedInitial}</span>`;
-                            
-                            const input = document.createElement('input');
-                            input.type = 'range';
-                            input.value = currentValue ?? 0;
-                            if(params.min !== undefined) input.min = params.min;
-                            if(params.max !== undefined) input.max = params.max;
-                            
-                            const step = params.step !== undefined ? Number(params.step) : (type === "INT" ? 1 : 0.1);
-                            input.step = step;
-                            
-                            input.id = `input_${key}`;
-                            
-                            // 3. 拖拽实时更新时，同样通过 toFixed 补齐长度
-                            input.addEventListener('input', () => {
-                                const badge = document.getElementById(`badge_${key}`);
-                                if (badge) {
-                                    badge.innerText = Number(input.value).toFixed(precision);
-                                }
-                            });
-                            
-                            group.appendChild(input);
-                        } else {
-                            const wrapper = document.createElement('div');
-                            wrapper.className = 'numeric-input-wrapper';
-                            
-                            const btnMinus = document.createElement('button');
-                            btnMinus.type = 'button';
-                            btnMinus.className = 'btn-numeric-adjust';
-                            btnMinus.innerText = '◀';
-                            
-                            const input = document.createElement('input');
-                            input.type = 'number';
-                            input.className = 'number-input';
-                            input.value = currentValue ?? 0;
-                            input.id = `input_${key}`;
-                            if(params.min !== undefined) input.min = params.min;
-                            if(params.max !== undefined) input.max = params.max;
-                            
-                            const step = params.step !== undefined ? Number(params.step) : (type === "INT" ? 1 : 0.1);
-                            input.step = step;
-                            
-                            const btnPlus = document.createElement('button');
-                            btnPlus.type = 'button';
-                            btnPlus.className = 'btn-numeric-adjust';
-                            btnPlus.innerText = '▶';
-                            
-                            const minVal = params.min !== undefined ? Number(params.min) : -Infinity;
-                            const maxVal = params.max !== undefined ? Number(params.max) : Infinity;
-                            
-                            btnMinus.onclick = () => {
-                                let val = Number(input.value) - step;
-                                if (val < minVal) val = minVal;
-                                if (type === "FLOAT") val = parseFloat(val.toFixed(4));
-                                input.value = val;
-                                input.dispatchEvent(new Event('change'));
-                            };
-                            
-                            btnPlus.onclick = () => {
-                                let val = Number(input.value) + step;
-                                if (val > maxVal) val = maxVal;
-                                if (type === "FLOAT") val = parseFloat(val.toFixed(4));
-                                input.value = val;
-                                input.dispatchEvent(new Event('change'));
-                            };
-                            
-                            wrapper.appendChild(btnMinus);
-                            wrapper.appendChild(input);
-                            wrapper.appendChild(btnPlus);
-                            group.appendChild(wrapper);
-                        }
-                    } else if (type === "BOOLEAN" || type === "BYPASSER") {
-                        const toggleContainer = document.createElement('div');
-                        toggleContainer.className = 'segmented-toggle';
+                // 👇【核心修改】：支持普通数字框在 FLOAT 模式下高精度补齐末尾的 0（如 8 变 8.00），且支持加减与手动输入自适应
+                if (type === "INT" || type === "FLOAT") {
+                    const isSlider = params.slider === true || params.display === "slider";
+                    
+                    // 1. 提取精度：若配置中带有了 precision 则强行遵守；若无，FLOAT 默认 3 位，INT 保留 0 位
+                    const precision = params.precision !== undefined ? Number(params.precision) : (type === "FLOAT" ? 3 : 0);
+                    
+                    if (isSlider) {
+                        const formattedInitial = Number(currentValue ?? 0).toFixed(precision);
+                        label.innerHTML = `<span>${params.name || key}</span><span class="slider-value-badge" id="badge_${key}">${formattedInitial}</span>`;
                         
                         const input = document.createElement('input');
-                        input.type = 'checkbox';
+                        input.type = 'range';
+                        input.value = currentValue ?? 0;
+                        if(params.min !== undefined) input.min = params.min;
+                        if(params.max !== undefined) input.max = params.max;
+                        
+                        const step = params.step !== undefined ? Number(params.step) : (type === "INT" ? 1 : 0.1);
+                        input.step = step;
                         input.id = `input_${key}`;
-                        input.checked = currentValue ?? true;
-                        input.style.display = 'none';
                         
-                        const track = document.createElement('div');
-                        track.className = 'toggle-track';
-                        
-                        const labelFalse = document.createElement('div');
-                        labelFalse.className = 'toggle-label-half';
-                        labelFalse.setAttribute('data-val', 'false');
-                        labelFalse.innerText = (type === "BYPASSER") ? t('label_off', 'OFF') : t('label_false', 'False');
-                        
-                        const labelTrue = document.createElement('div');
-                        labelTrue.className = 'toggle-label-half';
-                        labelTrue.setAttribute('data-val', 'true');
-                        labelTrue.innerText = (type === "BYPASSER") ? t('label_on', 'ON') : t('label_true', 'True');
-                        
-                        const thumb = document.createElement('div');
-                        thumb.className = 'toggle-thumb';
-                        
-                        track.appendChild(labelFalse);
-                        track.appendChild(labelTrue);
-                        track.appendChild(thumb);
-                        
-                        toggleContainer.appendChild(input);
-                        toggleContainer.appendChild(track);
-                        
-                        input.addEventListener('change', () => {
-                            if (window.comfyApp && sourceNodeId) {
-                                const node = window.comfyApp.graph.getNodeById(sourceNodeId);
-                                if (node) {
-                                    const widget = node.widgets.find(w => w.name === key);
-                                    if (widget) {
-                                        widget.value = input.checked;
-                                        if (widget.callback) widget.callback(input.checked);
-                                    }
-                                }
+                        input.addEventListener('input', () => {
+                            const badge = document.getElementById(`badge_${key}`);
+                            if (badge) {
+                                badge.innerText = Number(input.value).toFixed(precision);
                             }
                         });
-                        
-                        // 点击切换
-                        toggleContainer.addEventListener('click', () => {
-                            input.checked = !input.checked;
-                            input.dispatchEvent(new Event('change'));
-                        });
-                        
-                        // 左右手势拖拽
-                        let startX = 0;
-                        toggleContainer.addEventListener('touchstart', (e) => {
-                            startX = e.touches[0].clientX;
-                        }, {passive: true});
-                        toggleContainer.addEventListener('touchend', (e) => {
-                            let endX = e.changedTouches[0].clientX;
-                            let diffX = endX - startX;
-                            if (Math.abs(diffX) > 40) {
-                                if (diffX > 0 && !input.checked) {
-                                    input.checked = true;
-                                    input.dispatchEvent(new Event('change'));
-                                } else if (diffX < 0 && input.checked) {
-                                    input.checked = false;
-                                    input.dispatchEvent(new Event('change'));
-                                }
-                            }
-                        }, {passive: true});
-                        
-                        group.appendChild(toggleContainer);
-                    } else if (type === "COMBO") {
-                        const select = document.createElement('select');
-                        select.id = `input_${key}`;
-                        let values = params.values || ["None"];
-                        if (params.folder) {
-                            try {
-                                const response = await fetch(`/power_panel/ls/${params.folder}`);
-                                if (response.ok) {
-                                    const data = await response.json();
-                                    values = ["None", ...data];
-                                }
-                            } catch (e) { console.error("Fetch models failed:", e); }
-                        }
-                        values.forEach(val => {
-                            const opt = document.createElement('option');
-                            opt.value = val;
-                            opt.innerText = val;
-                            select.appendChild(opt);
-                        });
-                        select.value = currentValue ?? params.default;
-                            group.appendChild(select);
-                    } else if (type === "UPLOADER") {
-                        const uploaderContainer = document.createElement('div');
-                        uploaderContainer.className = 'uploader-wrapper';
-                        
-                        // 存储文件名的隐藏 Input，用来与 ComfyUI 进行后台通信同步
-                        const valueInput = document.createElement('input');
-                        valueInput.type = 'hidden';
-                        valueInput.id = `input_${key}`;
-                        valueInput.value = currentValue || '';
-                        uploaderContainer.appendChild(valueInput);
-                        
-                        const controlRow = document.createElement('div');
-                        controlRow.className = 'uploader-control-row';
-                        
-                        // 拖拽盒子（移除了 📤 图标标签）
-                        const dropzone = document.createElement('div');
-                        dropzone.className = 'uploader-dropzone';
-                        
-                        const text = document.createElement('span');
-                        text.className = 'uploader-text';
-                        const mediaType = params.media || 'image';
-                        text.innerText = t("label_uploader", "Drop {0} here or click to browse",t(mediaType, mediaType));
-                        
-                        const filenameLabel = document.createElement('div');
-                        filenameLabel.className = 'uploader-filename';
-                        filenameLabel.innerText = currentValue ? currentValue : '';
-                        
-                        dropzone.appendChild(text);
-                        dropzone.appendChild(filenameLabel);
-                        
-                        // 原生隐藏的文件选择控件 (放置在 dropzone 外部，杜绝点击事件无限死循环调用)
-                        const fileInput = document.createElement('input');
-                        fileInput.type = 'file';
-                        fileInput.style.display = 'none';
-                        if (mediaType === 'image') fileInput.accept = 'image/*';
-                        else if (mediaType === 'video') fileInput.accept = 'video/*';
-                        else if (mediaType === 'audio') fileInput.accept = 'audio/*';
-                        else fileInput.accept = 'image/*,video/*,audio/*';
-                        
-                        // 预览切换按钮（移至右侧，改用 👁️ 进行简洁显示）
-                        const previewToggle = document.createElement('button');
-                        previewToggle.type = 'button';
-                        previewToggle.className = 'uploader-preview-toggle';
-                        previewToggle.innerText = '👁️';
-                        previewToggle.style.display = currentValue ? 'flex' : 'none';
-                        
-                        // 依次将组件塞入行容器中
-                        controlRow.appendChild(dropzone);
-                        controlRow.appendChild(previewToggle);
-                        
-                        uploaderContainer.appendChild(fileInput);
-                        uploaderContainer.appendChild(controlRow);
-                        
-                        // 预览盒子
-                        const previewBox = document.createElement('div');
-                        previewBox.className = 'uploader-preview-box collapsed';
-                        
-                        uploaderContainer.appendChild(previewBox);
-                        
-                        // 触发文件选择
-                        dropzone.onclick = () => {
-                            fileInput.click();
-                        };
-                        
-                        // 处理拖放与选择事件
-                        dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
-                        dropzone.ondragenter = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
-                        dropzone.ondragleave = () => { dropzone.classList.remove('dragover'); };
-                        dropzone.ondrop = (e) => {
-                            e.preventDefault();
-                            dropzone.classList.remove('dragover');
-                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                handleFileUpload(e.dataTransfer.files[0]);
-                            }
-                        };
-                        
-                        fileInput.onchange = () => {
-                            if (fileInput.files && fileInput.files.length > 0) {
-                                handleFileUpload(fileInput.files[0]);
-                            }
-                        };
-                        
-                        // 监听文件值的变动，一旦发生改变（上传成功或重新加载），实时更新主节点
-                        valueInput.addEventListener('change', () => {
-                            if (window.comfyApp && sourceNodeId) {
-                                const node = window.comfyApp.graph.getNodeById(sourceNodeId);
-                                if (node) {
-                                    const widget = node.widgets.find(w => w.name === key);
-                                    if (widget) {
-                                        widget.value = valueInput.value;
-                                        if (widget.callback) widget.callback(valueInput.value);
-                                    }
-                                }
-                            }
-                        });
-                        
-                        // 异步上传逻辑
-                        // 异步上传逻辑（已升级客户端格式过滤防护网）
-                        async function handleFileUpload(file) {
-                            // 👇【核心修改：客户端多媒体类型强制双重验证（MIME + 后缀名）】
-                            const mime = file.type || "";
-                            const ext = file.name.split('.').pop().toLowerCase();
-                            
-                            // 👇【严格按照 ComfyUI 官方及主流媒体节点支持的格式构建的白名单】
-                            const imageExts = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff', 'jfif', 'jpe', 'tga'];
-                            const videoExts = ['mp4', 'webm', 'mkv', 'mov', 'avi', 'gif', 'flv', '3gp'];
-                            const audioExts = ['wav', 'mp3', 'ogg', 'flac', 'm4a', 'aac', 'wma'];
-                            
-                            // 双重校验：支持 mime 类型检测和物理后缀白名单检测
-                            const isImage = mime.startsWith('image/') || imageExts.includes(ext);
-                            const isVideo = mime.startsWith('video/') || videoExts.includes(ext);
-                            const isAudio = mime.startsWith('audio/') || audioExts.includes(ext);
-                            
-                            // 匹配当前控件要求的 mediaType
-                            let isValid = false;
-                            if (mediaType === 'image') {
-                                isValid = isImage;
-                            } else if (mediaType === 'video') {
-                                isValid = isVideo;
-                            } else if (mediaType === 'audio') {
-                                isValid = isAudio;
-                            } else {
-                                // 若没配置或设为 all，默认支持上述三大类多媒体
-                                isValid = isImage || isVideo || isAudio;
-                            }
-                            
-                            // 拦截验证失败的文件
-                            if (!isValid) {
-                                //alert(`Upload Blocked!\nThis uploader is configured for [${mediaType.toUpperCase()}] files only.\n\nSelected file: ${file.name}`);
-                                text.innerText = t("label_uploader", "Drop {0} here or click to browse",t(mediaType, mediaType));
-                                return;
-                            }
-                            
-                            // 通过验证后开始执行上传动作
-                            text.innerText = t('label_uploading', 'Uploading...');
-                            const formData = new FormData();
-                            formData.append('image', file);
-                            
-                            try {
-                                const response = await fetch('/upload/image', {
-                                    method: 'POST',
-                                    body: formData
-                                });
-                                if (response.ok) {
-                                    const result = await response.json();
-                                    valueInput.value = result.name;
-                                    filenameLabel.innerText = result.name;
-                                    text.innerText = t("label_uploader", "Drop {0} here or click to browse",t(mediaType, mediaType));
-                                    
-                                    valueInput.dispatchEvent(new Event('change'));
-                                    
-                                    updateMediaPreview(result.name);
-                                } else {
-                                    text.innerText = t('label_upfailed', 'Upload failed!');
-                                }
-                            } catch (err) {
-                                console.error(err);
-                                text.innerText = t('label_upfailed', 'Upload failed!');
-                            }
-                        }
-                        
-                        // 自适应媒体类型预览组件渲染
-                        function updateMediaPreview(filename) {
-                            previewBox.innerHTML = '';
-                            previewToggle.style.display = 'flex';
-                            
-                            if (!filename || filename === 'None' || filename === 'undefined' || filename === '') {
-                                const placeholderImg = document.createElement('img');
-                                // 采用主预览同款黑底灰字无损 SVG
-                                placeholderImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23555'/><text x='50%' y='50%' fill='%23999' font-size='16' text-anchor='middle' alignment-baseline='middle'>No Media</text></svg>";
-                                previewBox.appendChild(placeholderImg);
-                                
-                                // 占位符状态下我们保持其折叠状态（collapsed）以节省屏幕空间，用户可以手动点击小眼睛展开查看
-                                return;
-                            }
-                            
-                            // 如果是真实的媒体资源，自动移除折叠状态进行展开
-                            previewBox.classList.remove('collapsed');
-                            
-                            const fileUrl = `/view?filename=${encodeURIComponent(filename)}&type=input`;
-                            let mediaElement;
-                            
-                            if (mediaType === 'image') {
-                                mediaElement = document.createElement('img');
-                                mediaElement.src = fileUrl;
-                            } else if (mediaType === 'video') {
-                                mediaElement = document.createElement('video');
-                                mediaElement.src = fileUrl;
-                                mediaElement.controls = true;
-                            } else if (mediaType === 'audio') {
-                                mediaElement = document.createElement('audio');
-                                mediaElement.src = fileUrl;
-                                mediaElement.controls = true;
-                            } else {
-                                // 无法识别时：根据文件后缀猜测类型
-                                const ext = filename.split('.').pop().toLowerCase();
-                                if (['mp4', 'webm', 'ogg', 'mov'].includes(ext)) {
-                                    mediaElement = document.createElement('video');
-                                    mediaElement.src = fileUrl;
-                                    mediaElement.controls = true;
-                                } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) {
-                                    mediaElement = document.createElement('audio');
-                                    mediaElement.src = fileUrl;
-                                    mediaElement.controls = true;
-                                } else {
-                                    mediaElement = document.createElement('img');
-                                    mediaElement.src = fileUrl;
-                                }
-                            }
-                            
-                            previewBox.appendChild(mediaElement);
-                        }
-                        
-                        previewToggle.onclick = () => {
-                            previewBox.classList.toggle('collapsed');
-                        };
-                        
-                        updateMediaPreview(currentValue || 'None');
-                        group.appendChild(uploaderContainer);
-                    } else if (type === "SEED") {
-                        const seedContainer = document.createElement('div');
-                        seedContainer.className = 'seed-wrapper';
-                        // 1. 顶层大数字 +/- 微调器
+                        group.appendChild(input);
+                    } else {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'numeric-input-wrapper';
+                        
                         const btnMinus = document.createElement('button');
                         btnMinus.type = 'button';
                         btnMinus.className = 'btn-numeric-adjust';
                         btnMinus.innerText = '◀';
+                        
                         const input = document.createElement('input');
                         input.type = 'number';
                         input.className = 'number-input';
-                        input.value = currentValue ?? 0;
+                        
+                        // 2. 👈【初始化防抹零】：如果是 FLOAT，强制使用 toFixed 补齐末尾的 0（如 8 变 8.00）
+                        input.value = type === "FLOAT" ? Number(currentValue ?? 0).toFixed(precision) : (currentValue ?? 0);
                         input.id = `input_${key}`;
-                        input.min = 0;
-                        input.max = "18446744073709551615"; 
+                        if(params.min !== undefined) input.min = params.min;
+                        if(params.max !== undefined) input.max = params.max;
+                        
+                        const step = params.step !== undefined ? Number(params.step) : (type === "INT" ? 1 : 0.1);
+                        // 👈 核心：FLOAT 模式下设为 any，完美避开 Chrome/Safari 恶心的 step 步长不匹配检验警告弹窗
+                        input.step = type === "FLOAT" ? "any" : step; 
+                        
                         const btnPlus = document.createElement('button');
                         btnPlus.type = 'button';
                         btnPlus.className = 'btn-numeric-adjust';
                         btnPlus.innerText = '▶';
-                        // 使用 BigInt 运算防止 JS 浮点数运算在超大数时丢失精度
+                        
+                        const minVal = params.min !== undefined ? Number(params.min) : -Infinity;
+                        const maxVal = params.max !== undefined ? Number(params.max) : Infinity;
+                        
+                        // 3. 👈【微调防抹零】：加减计算后，直接以 toFixed 字符串写回输入框，保障 0 不丢失
                         btnMinus.onclick = () => {
-                            let val = BigInt(input.value) - 1n;
-                            if (val < 0n) val = 0n;
-                            input.value = val.toString();
+                            let val = Number(input.value) - step;
+                            if (val < minVal) val = minVal;
+                            input.value = type === "FLOAT" ? val.toFixed(precision) : Math.round(val);
                             input.dispatchEvent(new Event('change'));
                         };
+                        
                         btnPlus.onclick = () => {
-                            let val = BigInt(input.value) + 1n;
-                            const maxVal = 18446744073709551615n;
+                            let val = Number(input.value) + step;
                             if (val > maxVal) val = maxVal;
-                            input.value = val.toString();
+                            input.value = type === "FLOAT" ? val.toFixed(precision) : Math.round(val);
                             input.dispatchEvent(new Event('change'));
                         };
+                        
+                        // 4. 👈【手动输入防抹零】：用户自己用键盘手动打字输入后，失焦（change）时同样自动重整补齐精度
+                        input.addEventListener('change', () => {
+                            let val = Number(input.value);
+                            if (isNaN(val)) val = 0;
+                            if (val < minVal) val = minVal;
+                            if (val > maxVal) val = maxVal;
+                            input.value = type === "FLOAT" ? val.toFixed(precision) : Math.round(val);
+                        });
+                        
                         wrapper.appendChild(btnMinus);
                         wrapper.appendChild(input);
                         wrapper.appendChild(btnPlus);
-                        seedContainer.appendChild(wrapper);
-                        
-                        // 2. 底层 control_after_generate 下拉动作选项
-                        const actionRow = document.createElement('div');
-                        actionRow.className = 'seed-action-row';
-                        
-                        const actionLabel = document.createElement('span');
-                        actionLabel.className = 'seed-action-label';
-                        actionLabel.innerText = t("label_seed_control", "Seed Control");
-                        
-                        const select = document.createElement('select');
-                        select.className = 'seed-action-select';
-                        select.id = `input_action_${key}`;
-                        const options = ["fixed", "increment", "decrement", "randomize"];
-                        options.forEach(opt => {
-                            const el = document.createElement('option');
-                            el.value = opt;
-                            el.innerText = opt;
-                            select.appendChild(el);
-                        });
-                        
-                        const btnReuse = document.createElement('button');
-                        btnReuse.type = 'button';
-                        btnReuse.className = 'btn-numeric-adjust';
-                        btnReuse.innerText = '♻️';
-                        btnReuse.title = t("lastSeed_desc", 'Reuse Last Seed');
-                        btnReuse.onclick = (e) => {
-                            e.stopPropagation();
-                            // 从全局缓存中抓回上一次在前端生成过的种子值
-                            const lastVal = window._lastSeeds ? window._lastSeeds[key] : null;
-                            if (lastVal) {
-                                input.value = lastVal;
-                                input.dispatchEvent(new Event('change'));
-                                
-                                // 自动将后续动作锁定为 fixed
-                                select.value = "fixed";
-                                select.dispatchEvent(new Event('change'));
-                            } /*else {
-                                alert("No previous seed recorded in this session yet!");
-                            }*/
-                        };
-                        
-                        // 👈【新增】：随机骰子按钮 (🎲)
-                        const btnRand = document.createElement('button');
-                        btnRand.type = 'button';
-                        btnRand.className = 'btn-numeric-adjust';
-                        btnRand.innerText = '🎲';
-                        btnRand.title = t("randomSeed_desc", 'Randomize Seed');
-                        btnRand.onclick = (e) => {
-                            e.stopPropagation();
-                            const randVal = Math.floor(Math.random() * 1125899906842624).toString();
-                            input.value = randVal;
-                            input.dispatchEvent(new Event('change'));
-                            
-                            // 自动将后续动作锁定为 fixed (锁定该随机种子进行微调)
-                            select.value = "fixed";
-                            select.dispatchEvent(new Event('change'));
-                        };
-                        
-                        // 自动计算提取 ComfyUI 在 SEED 控件后追加的 control_after_generate 伴生控件
-                        const seedWidgetIndex = parentNode ? parentNode.widgets.indexOf(parentWidget) : -1;
-                        const companionWidget = (seedWidgetIndex !== -1) ? parentNode.widgets[seedWidgetIndex + 1] : null;
-                        if (companionWidget) {
-                            select.value = companionWidget.value || "randomize";
-                        }
-                        // 改变动作时，立即同步回 ComfyUI 主界面
-                        select.addEventListener('change', () => {
-                            if (companionWidget) {
-                                companionWidget.value = select.value;
-                                if (companionWidget.callback) companionWidget.callback(select.value);
+                        group.appendChild(wrapper);
+                    }
+                } else if (type === "BOOLEAN" || type === "BYPASSER") {
+                    const toggleContainer = document.createElement('div');
+                    toggleContainer.className = 'segmented-toggle';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.id = `input_${key}`;
+                    input.checked = currentValue ?? true;
+                    input.style.display = 'none';
+                    
+                    const track = document.createElement('div');
+                    track.className = 'toggle-track';
+                    
+                    const labelFalse = document.createElement('div');
+                    labelFalse.className = 'toggle-label-half';
+                    labelFalse.setAttribute('data-val', 'false');
+                    labelFalse.innerText = (type === "BYPASSER") ? t('label_off', 'OFF') : t('label_false', 'False');
+                    
+                    const labelTrue = document.createElement('div');
+                    labelTrue.className = 'toggle-label-half';
+                    labelTrue.setAttribute('data-val', 'true');
+                    labelTrue.innerText = (type === "BYPASSER") ? t('label_on', 'ON') : t('label_true', 'True');
+                    
+                    const thumb = document.createElement('div');
+                    thumb.className = 'toggle-thumb';
+                    
+                    track.appendChild(labelFalse);
+                    track.appendChild(labelTrue);
+                    track.appendChild(thumb);
+                    
+                    toggleContainer.appendChild(input);
+                    toggleContainer.appendChild(track);
+                    
+                    input.addEventListener('change', () => {
+                        if (window.comfyApp && sourceNodeId) {
+                            const node = window.comfyApp.graph.getNodeById(sourceNodeId);
+                            if (node) {
+                                const widget = node.widgets.find(w => w.name === key);
+                                if (widget) {
+                                    widget.value = input.checked;
+                                    if (widget.callback) widget.callback(input.checked);
+                                }
                             }
-                        });
-                        actionRow.appendChild(actionLabel);
-                        actionRow.appendChild(select);
-                        actionRow.appendChild(btnReuse);
-                        actionRow.appendChild(btnRand);
-                        seedContainer.appendChild(actionRow);
+                        }
+                    });
+                    
+                    // 点击切换
+                    toggleContainer.addEventListener('click', () => {
+                        input.checked = !input.checked;
+                        input.dispatchEvent(new Event('change'));
+                    });
+                    
+                    // 左右手势拖拽
+                    let startX = 0;
+                    toggleContainer.addEventListener('touchstart', (e) => {
+                        startX = e.touches[0].clientX;
+                    }, {passive: true});
+                    toggleContainer.addEventListener('touchend', (e) => {
+                        let endX = e.changedTouches[0].clientX;
+                        let diffX = endX - startX;
+                        if (Math.abs(diffX) > 40) {
+                            if (diffX > 0 && !input.checked) {
+                                input.checked = true;
+                                input.dispatchEvent(new Event('change'));
+                            } else if (diffX < 0 && input.checked) {
+                                input.checked = false;
+                                input.dispatchEvent(new Event('change'));
+                            }
+                        }
+                    }, {passive: true});
+                    
+                    group.appendChild(toggleContainer);
+                } else if (type === "COMBO") {
+                    const select = document.createElement('select');
+                    select.id = `input_${key}`;
+                    let values = params.values || ["None"];
+                    if (params.folder) {
+                        try {
+                            const response = await fetch(`/appbuilder/ls/${params.folder}`);
+                            if (response.ok) {
+                                const data = await response.json();
+                                values = ["None", ...data];
+                            }
+                        } catch (e) { console.error("Fetch models failed:", e); }
+                    }
+                    values.forEach(val => {
+                        const opt = document.createElement('option');
+                        opt.value = val;
+                        opt.innerText = val;
+                        select.appendChild(opt);
+                    });
+                    select.value = currentValue ?? params.default;
+                        group.appendChild(select);
+                } else if (type === "UPLOADER") {
+                    const uploaderContainer = document.createElement('div');
+                    uploaderContainer.className = 'uploader-wrapper';
+                    
+                    // 存储文件名的隐藏 Input，用来与 ComfyUI 进行后台通信同步
+                    const valueInput = document.createElement('input');
+                    valueInput.type = 'hidden';
+                    valueInput.id = `input_${key}`;
+                    valueInput.value = currentValue || '';
+                    uploaderContainer.appendChild(valueInput);
+                    
+                    const controlRow = document.createElement('div');
+                    controlRow.className = 'uploader-control-row';
+                    
+                    // 拖拽盒子（移除了 📤 图标标签）
+                    const dropzone = document.createElement('div');
+                    dropzone.className = 'uploader-dropzone';
+                    
+                    const text = document.createElement('span');
+                    text.className = 'uploader-text';
+                    const mediaType = params.media || 'image';
+                    text.innerText = t("label_uploader", "Drop {0} here or click to browse",t(mediaType, mediaType));
+                    
+                    const filenameLabel = document.createElement('div');
+                    filenameLabel.className = 'uploader-filename';
+                    filenameLabel.innerText = currentValue ? currentValue : '';
+                    
+                    dropzone.appendChild(text);
+                    dropzone.appendChild(filenameLabel);
+                    
+                    // 原生隐藏的文件选择控件 (放置在 dropzone 外部，杜绝点击事件无限死循环调用)
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.style.display = 'none';
+                    if (mediaType === 'image') fileInput.accept = 'image/*';
+                    else if (mediaType === 'video') fileInput.accept = 'video/*';
+                    else if (mediaType === 'audio') fileInput.accept = 'audio/*';
+                    else fileInput.accept = 'image/*,video/*,audio/*';
+                    
+                    // 预览切换按钮（移至右侧，改用 👁️ 进行简洁显示）
+                    const previewToggle = document.createElement('button');
+                    previewToggle.type = 'button';
+                    previewToggle.className = 'uploader-preview-toggle';
+                    previewToggle.innerText = '👁️';
+                    previewToggle.style.display = currentValue ? 'flex' : 'none';
+                    
+                    // 依次将组件塞入行容器中
+                    controlRow.appendChild(dropzone);
+                    controlRow.appendChild(previewToggle);
+                    
+                    uploaderContainer.appendChild(fileInput);
+                    uploaderContainer.appendChild(controlRow);
+                    
+                    // 预览盒子
+                    const previewBox = document.createElement('div');
+                    previewBox.className = 'uploader-preview-box collapsed';
+                    
+                    uploaderContainer.appendChild(previewBox);
+                    
+                    // 触发文件选择
+                    dropzone.onclick = () => {
+                        fileInput.click();
+                    };
+                    
+                    // 处理拖放与选择事件
+                    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
+                    dropzone.ondragenter = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
+                    dropzone.ondragleave = () => { dropzone.classList.remove('dragover'); };
+                    dropzone.ondrop = (e) => {
+                        e.preventDefault();
+                        dropzone.classList.remove('dragover');
+                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                            handleFileUpload(e.dataTransfer.files[0]);
+                        }
+                    };
+                    
+                    fileInput.onchange = () => {
+                        if (fileInput.files && fileInput.files.length > 0) {
+                            handleFileUpload(fileInput.files[0]);
+                        }
+                    };
+                    
+                    // 监听文件值的变动，一旦发生改变（上传成功或重新加载），实时更新主节点
+                    valueInput.addEventListener('change', () => {
+                        if (window.comfyApp && sourceNodeId) {
+                            const node = window.comfyApp.graph.getNodeById(sourceNodeId);
+                            if (node) {
+                                const widget = node.widgets.find(w => w.name === key);
+                                if (widget) {
+                                    widget.value = valueInput.value;
+                                    if (widget.callback) widget.callback(valueInput.value);
+                                }
+                            }
+                        }
+                    });
+                    
+                    // 异步上传逻辑
+                    // 异步上传逻辑（已升级客户端格式过滤防护网）
+                    async function handleFileUpload(file) {
+                        // 👇【核心修改：客户端多媒体类型强制双重验证（MIME + 后缀名）】
+                        const mime = file.type || "";
+                        const ext = file.name.split('.').pop().toLowerCase();
                         
-                        group.appendChild(seedContainer);
-                    } else {
-                        const isMultiline = params.multiline === true;
+                        // 👇【严格按照 ComfyUI 官方及主流媒体节点支持的格式构建的白名单】
+                        const imageExts = ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'tif', 'tiff', 'jfif', 'jpe', 'tga'];
+                        const videoExts = ['mp4', 'webm', 'mkv', 'mov', 'avi', 'gif', 'flv', '3gp'];
+                        const audioExts = ['wav', 'mp3', 'ogg', 'flac', 'm4a', 'aac', 'wma'];
                         
-                        if (isMultiline) {
-                            const container = document.createElement('div');
-                            container.className = 'input-with-button';
+                        // 双重校验：支持 mime 类型检测和物理后缀白名单检测
+                        const isImage = mime.startsWith('image/') || imageExts.includes(ext);
+                        const isVideo = mime.startsWith('video/') || videoExts.includes(ext);
+                        const isAudio = mime.startsWith('audio/') || audioExts.includes(ext);
                         
-                            const input = document.createElement('textarea');
-                            input.className = 'tight-textarea';
-                            input.value = currentValue ?? '';
-                            input.id = `input_${key}`;
-                            input.rows = 1;
-                            input.placeholder = params.placeholder || "";
-                            container.appendChild(input);
-                        
-                            const editBtn = document.createElement('button');
-                            editBtn.className = 'btn-edit-multiline';
-                            editBtn.type = 'button';
-                            editBtn.innerText = '📝';
-                            editBtn.onclick = () => openMultilineEditor(input, params.name || key);
-                            container.appendChild(editBtn);
-                        
-                            group.appendChild(container);
+                        // 匹配当前控件要求的 mediaType
+                        let isValid = false;
+                        if (mediaType === 'image') {
+                            isValid = isImage;
+                        } else if (mediaType === 'video') {
+                            isValid = isVideo;
+                        } else if (mediaType === 'audio') {
+                            isValid = isAudio;
                         } else {
-                            // 2. 如果未开启多行文本：退回最干净的普通单行输入框，完全不渲染 📝 按钮
-                            const input = document.createElement('input');
-                            input.type = 'text';
-                            input.value = currentValue ?? '';
-                            input.id = `input_${key}`;
-                            
-                            if (params.placeholder) input.placeholder = params.placeholder;
-                            group.appendChild(input);
+                            // 若没配置或设为 all，默认支持上述三大类多媒体
+                            isValid = isImage || isVideo || isAudio;
+                        }
+                        
+                        // 拦截验证失败的文件
+                        if (!isValid) {
+                            //alert(`Upload Blocked!\nThis uploader is configured for [${mediaType.toUpperCase()}] files only.\n\nSelected file: ${file.name}`);
+                            text.innerText = t("label_uploader", "Drop {0} here or click to browse",t(mediaType, mediaType));
+                            return;
+                        }
+                        
+                        // 通过验证后开始执行上传动作
+                        text.innerText = t('label_uploading', 'Uploading...');
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        
+                        try {
+                            const response = await fetch('/upload/image', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            if (response.ok) {
+                                const result = await response.json();
+                                valueInput.value = result.name;
+                                filenameLabel.innerText = result.name;
+                                text.innerText = t("label_uploader", "Drop {0} here or click to browse",t(mediaType, mediaType));
+                                
+                                valueInput.dispatchEvent(new Event('change'));
+                                
+                                updateMediaPreview(result.name);
+                            } else {
+                                text.innerText = t('label_upfailed', 'Upload failed!');
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            text.innerText = t('label_upfailed', 'Upload failed!');
                         }
                     }
-                    formContainer.appendChild(group);
+                    
+                    // 自适应媒体类型预览组件渲染
+                    function updateMediaPreview(filename) {
+                        previewBox.innerHTML = '';
+                        previewToggle.style.display = 'flex';
+                        
+                        if (!filename || filename === 'None' || filename === 'undefined' || filename === '') {
+                            const placeholderImg = document.createElement('img');
+                            // 采用主预览同款黑底灰字无损 SVG
+                            placeholderImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23555'/><text x='50%' y='50%' fill='%23999' font-size='16' text-anchor='middle' alignment-baseline='middle'>No Media</text></svg>";
+                            previewBox.appendChild(placeholderImg);
+                            
+                            // 占位符状态下我们保持其折叠状态（collapsed）以节省屏幕空间，用户可以手动点击小眼睛展开查看
+                            return;
+                        }
+                        
+                        // 如果是真实的媒体资源，自动移除折叠状态进行展开
+                        previewBox.classList.remove('collapsed');
+                        
+                        const fileUrl = `/view?filename=${encodeURIComponent(filename)}&type=input`;
+                        let mediaElement;
+                        
+                        if (mediaType === 'image') {
+                            mediaElement = document.createElement('img');
+                            mediaElement.src = fileUrl;
+                        } else if (mediaType === 'video') {
+                            mediaElement = document.createElement('video');
+                            mediaElement.src = fileUrl;
+                            mediaElement.controls = true;
+                        } else if (mediaType === 'audio') {
+                            mediaElement = document.createElement('audio');
+                            mediaElement.src = fileUrl;
+                            mediaElement.controls = true;
+                        } else {
+                            // 无法识别时：根据文件后缀猜测类型
+                            const ext = filename.split('.').pop().toLowerCase();
+                            if (['mp4', 'webm', 'ogg', 'mov'].includes(ext)) {
+                                mediaElement = document.createElement('video');
+                                mediaElement.src = fileUrl;
+                                mediaElement.controls = true;
+                            } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) {
+                                mediaElement = document.createElement('audio');
+                                mediaElement.src = fileUrl;
+                                mediaElement.controls = true;
+                            } else {
+                                mediaElement = document.createElement('img');
+                                mediaElement.src = fileUrl;
+                            }
+                        }
+                        
+                        previewBox.appendChild(mediaElement);
+                    }
+                    
+                    previewToggle.onclick = () => {
+                        previewBox.classList.toggle('collapsed');
+                    };
+                    
+                    updateMediaPreview(currentValue || 'None');
+                    group.appendChild(uploaderContainer);
+                } else if (type === "SEED") {
+                    const seedContainer = document.createElement('div');
+                    seedContainer.className = 'numeric-input-wrapper'; // 👈 直接使用数字行的全宽弹性包裹器
+                    
+                    const btnMinus = document.createElement('button');
+                    btnMinus.type = 'button';
+                    btnMinus.className = 'btn-numeric-adjust';
+                    btnMinus.innerText = '◀';
+                    //btnMinus.style.width = '2.5rem';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.className = 'number-input';
+                    //input.style.fontSize = '0.9rem';
+                    input.value = currentValue ?? 0;
+                    input.id = `input_${key}`;
+                    input.min = 0;
+                    input.max = "18446744073709551615"; 
+                    
+                    const btnPlus = document.createElement('button');
+                    btnPlus.type = 'button';
+                    btnPlus.className = 'btn-numeric-adjust';
+                    btnPlus.innerText = '▶';
+                    //btnPlus.style.width = '2.5rem';
+                    
+                    btnMinus.onclick = () => {
+                        let val = BigInt(input.value) - 1n;
+                        if (val < 0n) val = 0n;
+                        input.value = val.toString();
+                        input.dispatchEvent(new Event('change'));
+                    };
+                    
+                    btnPlus.onclick = () => {
+                        let val = BigInt(input.value) + 1n;
+                        const maxVal = 18446744073709551615n;
+                        if (val > maxVal) val = maxVal;
+                        input.value = val.toString();
+                        input.dispatchEvent(new Event('change'));
+                    };
+                    
+                    const utilGroup = document.createElement('div');
+                    utilGroup.className = 'seed-utility-group';
+                    
+                    // 自动计算提取 ComfyUI 在 SEED 控件后配置的 control_after_generate 伴生控件
+                    const seedWidgetIndex = parentNode ? parentNode.widgets.indexOf(parentWidget) : -1;
+                    const companionWidget = (seedWidgetIndex !== -1) ? parentNode.widgets[seedWidgetIndex + 1] : null;
+                    
+                    // 4种生成后动作的文本值与 Emoji 图标的对齐字典
+                    const modeActions = ["fixed", "increment", "decrement", "randomize"];
+                    const modeIcons = {
+                        "fixed": "⏺️",
+                        "increment": "⤴️",
+                        "decrement": "⤵️",
+                        "randomize": "🔀"
+                    };
+                    
+                    // 1. 👈【新增】：循环模式切换按钮，替代原本的下拉框
+                    const btnMode = document.createElement('button');
+                    btnMode.type = 'button';
+                    btnMode.className = 'btn-seed-util-item';
+                    btnMode.id = `input_action_btn_${key}`;
+                    
+                    const initMode = companionWidget ? (companionWidget.value || "randomize") : "randomize";
+                    btnMode.innerText = modeIcons[initMode] || "🔀";
+                    btnMode.title = t("random_mode", "Mode: ") + t(`label_${initMode}`, initMode);
+                    // 点击时进行 4 种动作的轮转切换并同步画布
+                    btnMode.onclick = () => {
+                        let currentIdx = modeActions.indexOf(companionWidget ? companionWidget.value : "randomize");
+                        if (currentIdx === -1) currentIdx = 3;
+                        
+                        const nextIdx = (currentIdx + 1) % modeActions.length;
+                        const nextMode = modeActions[nextIdx];
+                        
+                        btnMode.innerText = modeIcons[nextMode];
+                        btnMode.title = t("random_mode", "Mode: ") + t(`label_${nextMode}`, nextMode);
+                        
+                        if (companionWidget) {
+                            companionWidget.value = nextMode;
+                            if (companionWidget.callback) companionWidget.callback(nextMode);
+                        }
+                    };
+                    
+                    // 2. 找回上一个种子 (♻️)
+                    const btnReuse = document.createElement('button');
+                    btnReuse.type = 'button';
+                    btnReuse.className = 'btn-seed-util-item';
+                    btnReuse.innerText = '♻️';
+                    btnReuse.title = t("lastSeed_desc", 'Reuse Last Seed');
+                    btnReuse.onclick = (e) => {
+                        e.stopPropagation();
+                        const lastVal = window._lastSeeds ? window._lastSeeds[key] : null;
+                        if (lastVal) {
+                            input.value = lastVal;
+                            input.dispatchEvent(new Event('change'));
+                            
+                            // 自动切换并锁定为固定状态（fixed / ⏺️）
+                            btnMode.innerText = "⏺️";
+                            btnMode.title = t("random_mode", "Mode: ") + t(`label_fixed`, "fixed");
+                            if (companionWidget) {
+                                companionWidget.value = "fixed";
+                                if (companionWidget.callback) companionWidget.callback("fixed");
+                            }
+                        } 
+                    };
+                    
+                    // 3. 随机大整数种子 (🎲)
+                    const btnRand = document.createElement('button');
+                    btnRand.type = 'button';
+                    btnRand.className = 'btn-seed-util-item';
+                    btnRand.innerText = '🎲';
+                    btnRand.title = t("randomSeed_desc", 'Randomize Seed');
+                    btnRand.onclick = (e) => {
+                        e.stopPropagation();
+                        const randVal = Math.floor(Math.random() * 1125899906842624).toString();
+                        input.value = randVal;
+                        input.dispatchEvent(new Event('change'));
+                        
+                        // 自动切换并锁定为固定状态（fixed / ⏺️）
+                        btnMode.innerText = "⏺️";
+                        btnMode.title = t("random_mode", "Mode: ") + t(`label_fixed`, "fixed");
+                        if (companionWidget) {
+                            companionWidget.value = "fixed";
+                            if (companionWidget.callback) companionWidget.callback("fixed");
+                        }
+                    };
+                    
+                    // 依次横向塞入组件，合为一排
+                    utilGroup.appendChild(btnMode);
+                    utilGroup.appendChild(btnReuse);
+                    utilGroup.appendChild(btnRand);
+                    
+                    // 依次横向塞入主行
+                    seedContainer.appendChild(btnMinus);
+                    seedContainer.appendChild(input);
+                    seedContainer.appendChild(btnPlus);
+                    seedContainer.appendChild(utilGroup); // 👈 胶囊整体塞在最右侧
+                    
+                    group.appendChild(seedContainer);
+                } else {
+                    const isMultiline = params.multiline === true;
+                    
+                    if (isMultiline) {
+                        const container = document.createElement('div');
+                        container.className = 'input-with-button';
+                    
+                        const input = document.createElement('textarea');
+                        input.className = 'tight-textarea';
+                        input.value = currentValue ?? '';
+                        input.id = `input_${key}`;
+                        input.rows = 1;
+                        input.placeholder = params.placeholder || "";
+                        container.appendChild(input);
+                    
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'btn-edit-multiline';
+                        editBtn.type = 'button';
+                        editBtn.innerText = '📝';
+                        editBtn.onclick = () => openMultilineEditor(input, params.name || key);
+                        container.appendChild(editBtn);
+                    
+                        group.appendChild(container);
+                    } else {
+                        // 2. 如果未开启多行文本：退回最干净的普通单行输入框，完全不渲染 📝 按钮
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = currentValue ?? '';
+                        input.id = `input_${key}`;
+                        
+                        if (params.placeholder) input.placeholder = params.placeholder;
+                        group.appendChild(input);
+                    }
+                }
+                formContainer.appendChild(group);
             }
         }
         
@@ -1925,7 +1979,7 @@
         function updateLightboxUI() {
             const imgUrl = currentImagesList[currentLightboxIndex];
             document.getElementById('lightbox-img').src = imgUrl;
-            document.getElementById('main-preview').src = imgUrl;
+            //document.getElementById('main-preview').src = imgUrl;
             
             const prevBtn = document.getElementById('lightbox-prev');
             const nextBtn = document.getElementById('lightbox-next');
@@ -2253,13 +2307,13 @@
             const node = window.comfyApp.graph.getNodeById(sourceNodeId);
             if (!node) return alert(t("node_notfound", "Original node not found!"));
             
-            const seedActionSelects = document.querySelectorAll('.seed-action-select');
-            seedActionSelects.forEach(select => {
-                if (select.value === 'randomize') {
-                    const seedKey = select.id.replace('input_action_', '');
+            const seedActionBtns = document.querySelectorAll('[id^="input_action_btn_"]');
+            seedActionBtns.forEach(btn => {
+                if (btn.innerText === '🔀') {
+                    const seedKey = btn.id.replace('input_action_btn_', '');
                     const seedInput = document.getElementById(`input_${seedKey}`);
                     if (seedInput) {
-                        const newSeed = Math.floor(Math.random() * 1125899906842624).toString()
+                        const newSeed = Math.floor(Math.random() * 1125899906842624).toString();
                         seedInput.value = newSeed;
                         seedInput.dispatchEvent(new Event('change')); // 派发事件同步给主界面
                     }

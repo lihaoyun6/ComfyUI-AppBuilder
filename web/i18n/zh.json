@@ -79,7 +79,6 @@
   "video": "视频",
   "audio": "音频",
   "label_uploader": "点击此处选择或将{0}拖放到此处",
-  "label_seed_control": "种子控制",
   "label_on": "开",
   "label_true": "是",
   "label_off": "关",
@@ -96,6 +95,11 @@
   "console_title": "🖥 运行日志",
   "lastSeed_desc": "恢复上一个随机种",
   "randomSeed_desc": "生成新的随机种",
+  "random_mode": "随机模式: ",
+  "label_fixed": "固定",
+  "label_increment": "自增",
+  "label_decrement": "自减",
+  "label_randomize": "随机",
   "back_to_comfyui": "\u276e 返回",
   "confirm_clear_gallery": "确认要清空画廊历史记录吗?"
 }
