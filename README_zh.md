@@ -3,7 +3,7 @@
 **[[📃English](./README.md)]**   
 
 ## 预览
-https://github.com/user-attachments/assets/67e1ca0f-6c99-4674-9e06-26770ffb2d94
+https://github.com/user-attachments/assets/ad27a055-d271-4ca7-ac59-bd02c1df378e  
 
 ## 安装
 ```bash
