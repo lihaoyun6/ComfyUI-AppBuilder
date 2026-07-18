@@ -528,53 +528,44 @@ app.registerExtension({
                     const htmlUrl = new URL('app_view.html', import.meta.url);
                     htmlUrl.searchParams.set('nodeId', this.id); 
                     
-                    if (isMobile()) {
-                        let oldIframe = document.getElementById("appview-iframe");
-                        if (oldIframe) {
-                            oldIframe.remove(); 
-                        }
-                        
-                        // 每次都凭空捏造一个绝对干净的新容器
-                        let iframe = document.createElement("iframe");
-                        iframe.id = "appview-iframe";
-                        iframe.style.position = "fixed";
-                        iframe.style.top = "0";
-                        iframe.style.left = "0";
-                        iframe.style.bottom = "0";
-                        iframe.style.width = "100%";
-                        iframe.style.height = "100dvh";
-                        iframe.style.zIndex = "999999";
-                        iframe.style.border = "none";
-                        
-                        // 👇【绝对核心 2】：在加载网页前，先把容器底色刷成纯黑！杜绝加载网络时的白屏闪烁
-                        const savedTheme = localStorage.getItem('appview_theme') || 'dark';
-                        iframe.style.backgroundColor = savedTheme === 'light' ? '#fafafa' : '#000000';
-                        
-                        document.body.appendChild(iframe);
-                        iframe.src = htmlUrl.href;
-                        
-                        this.registerAppWindow(iframe.contentWindow);
-                    } else {
-                        // 💻 电脑端：保持原样，打开独立新标签页
-                        const appWindow = window.open(htmlUrl.href, '_blank');
-                        if (!appWindow) {
-                            alert("Please allow pop-ups for this site to open the AppView.");
-                            return;
-                        }
-                        this.registerAppWindow(appWindow);
+                    let oldIframe = document.getElementById("appview-iframe");
+                    if (oldIframe) {
+                        oldIframe.remove(); 
                     }
+                    
+                    // 每次都凭空捏造一个绝对干净的新容器
+                    let iframe = document.createElement("iframe");
+                    iframe.id = "appview-iframe";
+                    iframe.style.position = "fixed";
+                    iframe.style.top = "0";
+                    iframe.style.left = "0";
+                    iframe.style.bottom = "0";
+                    iframe.style.width = "100%";
+                    iframe.style.height = "100dvh";
+                    iframe.style.zIndex = "999999";
+                    iframe.style.border = "none";
+                    
+                    // 👇【绝对核心 2】：在加载网页前，先把容器底色刷成纯黑！杜绝加载网络时的白屏闪烁
+                    const savedTheme = localStorage.getItem('appview_theme') || 'dark';
+                    iframe.style.backgroundColor = savedTheme === 'light' ? '#fafafa' : '#000000';
+                    
+                    document.body.appendChild(iframe);
+                    iframe.src = htmlUrl.href;
+                    
+                    this.registerAppWindow(iframe.contentWindow);
+
+                    /* 💻 电脑端：保持原样，打开独立新标签页
+                    const appWindow = window.open(htmlUrl.href, '_blank');
+                    if (!appWindow) {
+                        alert("Please allow pop-ups for this site to open the AppView.");
+                        return;
+                    }
+                    this.registerAppWindow(appWindow);*/
                 });
                 
                 // 👇 【核心修复】：利用 Object.defineProperty 绕过只读 Getter 限制，强行重写绘制高度
-                Object.defineProperty(btnWidget, 'height', {
-                    get() { return 40; }, // 👈 在这里返回你想要的视觉高度（例如 40）
-                    configurable: true    // 允许属性可配置
-                });
-                
-                // 保持原有的判定区大小与之同步
-                btnWidget.computeSize = function(width) {
-                    return [width, 40]; 
-                };
+                Object.defineProperty(btnWidget, 'height', { get() { return 40; }, configurable: true });
+                btnWidget.computeSize = function(width) { return [width, 40]; };
                 
                 this.hideWidget = function(widget) {
                     if (!widget._origType) widget._origType = widget.type;
@@ -1155,38 +1146,36 @@ app.registerExtension({
                     const htmlUrl = new URL('app_view.html', import.meta.url);
                     htmlUrl.searchParams.set('nodeId', this.id); 
                     
-                    if (isMobile()) {
-                        let oldIframe = document.getElementById("appview-iframe");
-                        if (oldIframe) {
-                            oldIframe.remove(); 
-                        }
-                        
-                        let iframe = document.createElement("iframe");
-                        iframe.id = "appview-iframe";
-                        iframe.style.position = "fixed";
-                        iframe.style.top = "0";
-                        iframe.style.left = "0";
-                        iframe.style.bottom = "0";
-                        iframe.style.width = "100%";
-                        iframe.style.height = "100dvh";
-                        iframe.style.zIndex = "999999";
-                        iframe.style.border = "none";
-                        
-                        const savedTheme = localStorage.getItem('appview_theme') || 'dark';
-                        iframe.style.backgroundColor = savedTheme === 'light' ? '#fafafa' : '#000000';
-                        
-                        document.body.appendChild(iframe);
-                        iframe.src = htmlUrl.href;
-                        
-                        this.registerAppWindow(iframe.contentWindow);
-                    } else {
-                        const appWindow = window.open(htmlUrl.href, '_blank');
-                        if (!appWindow) {
-                            alert("Please allow pop-ups for this site to open the AppView.");
-                            return;
-                        }
-                        this.registerAppWindow(appWindow);
+                    let oldIframe = document.getElementById("appview-iframe");
+                    if (oldIframe) {
+                        oldIframe.remove(); 
                     }
+                    
+                    let iframe = document.createElement("iframe");
+                    iframe.id = "appview-iframe";
+                    iframe.style.position = "fixed";
+                    iframe.style.top = "0";
+                    iframe.style.left = "0";
+                    iframe.style.bottom = "0";
+                    iframe.style.width = "100%";
+                    iframe.style.height = "100dvh";
+                    iframe.style.zIndex = "999999";
+                    iframe.style.border = "none";
+                    
+                    const savedTheme = localStorage.getItem('appview_theme') || 'dark';
+                    iframe.style.backgroundColor = savedTheme === 'light' ? '#fafafa' : '#000000';
+                    
+                    document.body.appendChild(iframe);
+                    iframe.src = htmlUrl.href;
+                    
+                    this.registerAppWindow(iframe.contentWindow);
+
+                    /*const appWindow = window.open(htmlUrl.href, '_blank');
+                    if (!appWindow) {
+                        alert("Please allow pop-ups for this site to open the AppView.");
+                        return;
+                    }
+                    this.registerAppWindow(appWindow);*/
                 });
                 Object.defineProperty(btnWidget, 'height', { get() { return 40; }, configurable: true });
                 btnWidget.computeSize = function(width) { return [width, 40]; };
