@@ -257,7 +257,7 @@
             width: 2.5rem; height: 36px; cursor: pointer; font-size: 18px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; user-select: none;
         }
-        .btn-numeric-adjust:active { background: var(--border); }
+        .btn-numeric-adjust:hover { background: var(--border); }
 
         /* 双段开关式 BOOLEAN */
         .segmented-toggle {
@@ -286,11 +286,10 @@
             background: var(--panel-bg); border: 1px solid var(--border); color: #fff; border-radius: 8px; width: 2.5rem;
             flex-shrink: 0; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
         }
-        .btn-edit-multiline:active { background: var(--border); }
+        .btn-edit-multiline:hover { background: var(--border); }
         
         /* 👇 新增：让多行编辑容器内的输入框自适应剩余空间，不再霸道地占用 100% 宽度 */
         .input-with-button input, .input-with-button textarea { flex: 1; width: auto; }
-        .btn-edit-multiline:active { background: var(--border); }
         
         /* 👇 新增控制行容器，让上传框和切换预览按钮横向并排 */
         .uploader-control-row { display: flex; gap: 6px; width: 100%; }
@@ -300,6 +299,7 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; user-select: none;
         }
         .uploader-dropzone.dragover { border-color: var(--primary); background: rgba(76, 175, 80, 0.05); }
+        .uploader-dropzone:hover { background: rgba(76, 175, 80, 0.05); }
         /* 👈 已移除原有的 .uploader-icon 图标样式 */
         .uploader-text { font-size: 13px; color: #888; }
         .uploader-filename { font-size: 12px; color: var(--primary); word-break: break-all; margin-top: 2px; font-weight: bold; }
@@ -310,7 +310,7 @@
             width: 2.5rem; cursor: pointer; font-size: 16px; display: none; align-items: center;
             justify-content: center; user-select: none;
         }
-        .uploader-preview-toggle:active { background: #2a2a2a; }
+        .uploader-preview-toggle:hover { background-color: var(--border); }
         .uploader-preview-box {
             margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
             overflow: hidden; display: flex; justify-content: center; align-items: center; max-height: 200px;
@@ -556,13 +556,7 @@
             justify-content: center;
             user-select: none;
         }
-        /* 悬浮与点击时，只对当前按钮的背景色进行亮化/变暗即可 */
-        .btn-seed-util-item:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-        }
-        .btn-seed-util-item:active {
-            background-color: var(--border);
-        }
+        .btn-seed-util-item:hover { background-color: var(--border); }
         
         /* 电脑端响应式重写 */
         @media (min-width: 768px) {
@@ -635,6 +629,10 @@
                 opacity: 1;
             }
         }
+        
+        .chrome-only #refresh-btn {
+            font-size: 23px; font-weight: normal !important; padding-bottom: 3px; -webkit-text-stroke: 0px currentColor !important;
+        }
     </style>
 </head>
 <body>
@@ -657,9 +655,9 @@
             <div class="preview-section">
                 <div class="header-bar">
                     <div class="header-btn-group">
-                        <button class="header-btn" id="iframe-close-btn" style="display: none;" data-i18n="back_to_comfyui">&#10094; Back</button>
-                        <button class="header-btn" id="refresh-btn" style="display: none;">↻</button>
-                        <button class="header-btn" id="theme-toggle" style="text-shadow: 0.25px 0.25px 0px var(--title)">◐</button>
+                        <button class="header-btn" id="iframe-close-btn" style="display: none;" data-i18n="back_to_comfyui" title="Back to ComfyUI">&#10094; Back</button>
+                        <button class="header-btn" id="refresh-btn" style="display: none; -webkit-text-stroke: 0.5px currentColor;" title="Refresh">↻</button>
+                        <button class="header-btn" id="theme-toggle" style="-webkit-text-stroke: 1.2px currentColor;" title="Appearance">◐</button>
                     </div>
                     <span class="header-status-badge" id="status-text" data-i18n="label_ready">Ready</span>
                 </div>
@@ -1073,6 +1071,10 @@
         window.addEventListener('DOMContentLoaded', async () => {
             await loadI18n();
             
+            if (navigator.userAgentData?.brands.some(b => b.brand === "Google Chrome")) {
+                document.documentElement.classList.add("chrome-only");
+            }
+            
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 if (splash) {
@@ -1317,7 +1319,7 @@
                             if (modeBtn) {
                                 const modeIcons = { "fixed": "⏺️", "increment": "⤴️", "decrement": "⤵️", "randomize": "🔀" };
                                 modeBtn.innerText = modeIcons[widget.value] || "🔀";
-                                modeBtn.title = `Mode: ${widget.value}`;
+                                modeBtn.title = `Seed Control: ${widget.value}`;
                             }
                         }
                     }
@@ -1811,7 +1813,7 @@
                     
                     const initMode = companionWidget ? (companionWidget.value || "randomize") : "randomize";
                     btnMode.innerText = modeIcons[initMode] || "🔀";
-                    btnMode.title = t("random_mode", "Mode: ") + t(`label_${initMode}`, initMode);
+                    btnMode.title = t("random_mode", "Seed Control: ") + t(`label_${initMode}`, initMode);
                     // 点击时进行 4 种动作的轮转切换并同步画布
                     btnMode.onclick = () => {
                         let currentIdx = modeActions.indexOf(companionWidget ? companionWidget.value : "randomize");
@@ -1821,7 +1823,7 @@
                         const nextMode = modeActions[nextIdx];
                         
                         btnMode.innerText = modeIcons[nextMode];
-                        btnMode.title = t("random_mode", "Mode: ") + t(`label_${nextMode}`, nextMode);
+                        btnMode.title = t("random_mode", "Seed Control: ") + t(`label_${nextMode}`, nextMode);
                         
                         if (companionWidget) {
                             companionWidget.value = nextMode;
@@ -1844,7 +1846,7 @@
                             
                             // 自动切换并锁定为固定状态（fixed / ⏺️）
                             btnMode.innerText = "⏺️";
-                            btnMode.title = t("random_mode", "Mode: ") + t(`label_fixed`, "fixed");
+                            btnMode.title = t("random_mode", "Seed Control: ") + t(`label_fixed`, "fixed");
                             if (companionWidget) {
                                 companionWidget.value = "fixed";
                                 if (companionWidget.callback) companionWidget.callback("fixed");
@@ -1866,7 +1868,7 @@
                         
                         // 自动切换并锁定为固定状态（fixed / ⏺️）
                         btnMode.innerText = "⏺️";
-                        btnMode.title = t("random_mode", "Mode: ") + t(`label_fixed`, "fixed");
+                        btnMode.title = t("random_mode", "Seed Control: ") + t(`label_fixed`, "fixed");
                         if (companionWidget) {
                             companionWidget.value = "fixed";
                             if (companionWidget.callback) companionWidget.callback("fixed");
