@@ -8,16 +8,16 @@
         :root {
             color-scheme: dark;
             --bg: #000000;
-            --bg-color: #121212;
+            --bg-color: #1c1c1c;
             --bg-badge: rgba(255,255,255,0.3);
-            --panel-bg: #202020;
+            --panel-bg: #393939;
             --primary: #4CAF50;
             --second: #418a44;
             --text: #FFFFFF;
             --title: #AAAAAA;
-            --border: #333333;
+            --border: #555555;
             --border-neg: #D8D8D8;
-            --shadow: rgb(255,255,255,0.1);
+            --shadow: rgb(0,0,0,0.7);
             --red: #dc4125;
         }
         
@@ -34,7 +34,7 @@
             --title: #555555;
             --border: #D8D8D8;
             --border-neg: #333333;
-            --shadow: rgb(0,0,0,0.1);
+            --shadow: rgb(0,0,0,0.);
             --red: #dc4125;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -87,19 +87,18 @@
 
         .preview-section {
             flex: 1; background-color: var(--bg); display: flex; justify-content: center;
-            align-items: center; position: relative; overflow: hidden;
+            position: relative; overflow: hidden; padding: 46px 8px 8px 8px; align-items: center;
         }
         
         #main-preview { 
-            max-width: 100%; max-height: 100%; 
-            object-fit: contain; 
+            max-width: 100%; max-height: 100%; object-fit: contain; 
             pointer-events: none; user-select: none; -webkit-user-drag: none; 
         }
 
         .gallery-container { 
             display: flex; align-items: center; padding: 0 16px; gap: 8px; height: 72px;
-            background-color: var(--panel-bg); border-top: 1px solid var(--border);
-            border-top-left-radius: 18px; border-top-right-radius: 18px; padding-top: 8px;
+            background-color: var(--bg); border-top: 1px solid var(--border);
+            border-top-left-radius: 24px; border-top-right-radius: 24px; padding-top: 8px;
             overflow: hidden; /* 👈 彻底锁死外层滚动，阻断弹性影响 */
         }
         
@@ -120,11 +119,11 @@
         .gallery-clear-btn {
             flex-shrink: 0;
             width: 3rem; height: 60px; border-radius: 8px;
-            background-color: var(--border); border: none;
+            background-color: #444; border: none;
             color: #FFF; font-size: 18px; font-weight: bold; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
-        .gallery-clear-btn:hover { color: var(--red); }
+        .gallery-clear-btn:hover { background-color: var(--red); }
         .gallery-item-placeholder {
             width: 60px; height: 60px; border-radius: 6px; flex-shrink: 0;
             background-color: var(--panel-bg); border: 2px solid var(--border);
@@ -160,7 +159,7 @@
         /* 右侧面板 */
         .right-panel {
             flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; border-top: 2px solid var(--border);
-            box-shadow: 0px 0px 30px var(--shadow); border-top-left-radius: 18px; border-top-right-radius: 18px;
+            box-shadow: 0px 0px 30px var(--shadow); border-top-left-radius: 24px; border-top-right-radius: 24px;
         }
 
         /* 紧凑参数区：由于画廊手机端在最下侧，Padding只需要 150px（按钮+画廊） */
@@ -182,9 +181,14 @@
             color: var(--primary); user-select: none;
         }
         
-        input[type="text"], input[type="number"], select {
-            width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
-            background: var(--panel-bg); color: var(--text); font-size: 14px; appearance: none;
+        input[type="text"], select {
+            width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); font-family: monospace;
+            background: var(--panel-bg); color: var(--text); font-size: 14px; appearance: none; height: 36px;
+        }
+        input[type="number"] {
+            width: 100%; padding: 8px 10px; background: var(--panel-bg); color: var(--text); font-size: 14px; appearance: none;
+            border: none; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); border-radius: 0px;
+            height: 36px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl;
         }
 
         /* 👈 核心修改：紧凑型文本域（用来代替input[type="text"]以原生支持多行换行） */
@@ -250,13 +254,15 @@
         }
 
         /* 数字加减微调器 */
-        .numeric-input-wrapper { display: flex; align-items: center; width: 100%; gap: 6px; }
+        .numeric-input-wrapper { display: flex; align-items: center; width: 100%; gap: 0px; }
         .numeric-input-wrapper input { flex: 1; text-align: center; }
         .btn-numeric-adjust {
-            background: var(--panel-bg); border: 1px solid var(--border); color: var(--title); border-radius: 8px;
+            background: var(--panel-bg); border: 1px solid var(--border); color: var(--title);
             width: 2.5rem; height: 36px; cursor: pointer; font-size: 18px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; user-select: none;
         }
+        .btn-numeric-adjust-right { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+        .btn-numeric-adjust-left { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
         .btn-numeric-adjust:hover { background: var(--border); }
 
         /* 双段开关式 BOOLEAN */
@@ -283,7 +289,7 @@
         /* 多行编辑包装器 */
         .input-with-button { display: flex; gap: 6px; width: 100%; }
         .btn-edit-multiline {
-            background: var(--panel-bg); border: 1px solid var(--border); color: #fff; border-radius: 8px; width: 2.5rem;
+            background: var(--panel-bg); border: 1px solid var(--border); border-radius: 8px; width: 2.5rem; height: 72px; 
             flex-shrink: 0; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center;
         }
         .btn-edit-multiline:hover { background: var(--border); }
@@ -312,7 +318,7 @@
         }
         .uploader-preview-toggle:hover { background-color: var(--border); }
         .uploader-preview-box {
-            margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-bg);
+            margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
             overflow: hidden; display: flex; justify-content: center; align-items: center; max-height: 200px;
             transition: max-height 0.2s ease-out;
         }
@@ -322,8 +328,8 @@
 
         /* 底部操作栏 */
         .bottom-action-bar {
-            position: absolute; bottom: 0; left: 0; width: 100%; background-color: var(--panel-bg); z-index: 100; display: flex;
-            flex-direction: column; padding-bottom: env(safe-area-inset-bottom); border-top-left-radius: 19px; border-top-right-radius: 19px;
+            position: absolute; bottom: 0; left: 0; width: 100%; background-color: var(--bg); z-index: 100; display: flex;
+            flex-direction: column; padding-bottom: env(safe-area-inset-bottom); border-top-left-radius: 24px; border-top-right-radius: 24px;
             box-shadow: 0px 0px 30px var(--shadow); border-top: 1px solid var(--border); 
         }
         
@@ -401,10 +407,10 @@
         .number-input::-webkit-outer-spin-button, .number-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .number-input[type=number] { -moz-appearance: textfield; }
         .btn-batch-input {
-            background-color: var(--border) !important; border: 1px solid #555 !important; border-radius: 8px;
+            background-color: var(--bg) !important; border: 2px solid var(--border) !important; border-radius: 8px !important;
             flex: 3rem 0 0; color: #fff; text-align: center; outline: none; touch-action: manipulation;
-            padding-left: 4px !important; padding-right: 4px !important;
-        }
+            padding-left: 4px !important; padding-right: 4px !important; height: 40px !important;
+        }f
         
         .theme-toggle-btn {
             position: absolute; top: 10px; right: 10px; padding: 3px 10px; cursor: pointer;
@@ -458,7 +464,7 @@
         
         .header-bar {
             position: absolute;
-            top: 10px;
+            top: 8px;
             left: 10px;
             right: 10px;
             display: flex;
@@ -472,11 +478,11 @@
         .header-btn-group {
             display: flex;
             flex-shrink: 0; 
-            height: 36px;
+            height: 30px;
             gap: 1.5px; /* 👈 每个按钮之间精确间隔 1px */
             background-color: var(--border); /* 用边框色作为背景，gap 处就会自然呈现 1px 分割线 */
             border: 1.5px solid var(--border);
-            border-radius: 8px;
+            border-radius: 15px;
             overflow: hidden;
             pointer-events: auto; /* 恢复按钮区域的点击 */
             box-shadow: 0px 0px 30px var(--shadow);
@@ -505,9 +511,9 @@
             background-color: var(--panel-bg);
             border: 1.5px solid var(--border);
             color: var(--title);
-            height: 36px;
+            height: 30px;
             padding: 0 12px;
-            border-radius: 8px;
+            border-radius: 15px;
             font-size: 12px;
             font-weight: bold;
             display: flex;
@@ -520,7 +526,7 @@
             
             /* 👈【核心新增】：经典文本溢出 Ellipsis 省略号排版 */
             display: block;          /* 设为 block 确保 text-overflow 生效 */
-            line-height: 34px;       /* 32px高度扣除上下边框各1px，30px行高可完美垂直居中 */
+            line-height: 28px;       /* 32px高度扣除上下边框各1px，30px行高可完美垂直居中 */
             text-align: center;
             white-space: nowrap;     /* 强行不换行 */
             overflow: hidden;        /* 隐藏超出边界的内容 */
@@ -565,8 +571,9 @@
             
             /* 100vh 改为 100%，以完美适应底部抽屉推起后的高度 */
             .viewer-container { flex: 1 1 auto; min-width: 0; height: 100%; }
-            .right-panel { 
-                flex: 0 0 400px; width: 400px; min-width: 300px; display: flex; flex-direction: column; height: 100%;
+            .right-panel {
+                flex: 0 0 400px; width: 400px; min-width: 350px; max-width: calc(100vw - 350px) !important; 
+                display: flex; flex-direction: column; height: 100%;
                 position: relative; box-shadow: none; border-radius: 0px !important; border-top: 0px !important;
             }
             
@@ -688,7 +695,6 @@
                         <button class="btn btn-run" id="btn-run" data-i18n="button_run">▷ Run</button>
                     </div>
                     <button class="btn btn-stop" id="btn-stop">&times;</button>
-                    <!-- 👇 2. 【新增】：将日志切换按钮移到了这里，和停止按钮并排 -->
                     <button class="btn btn-console" id="console-toggle">>_</button>
                 </div>
             </div>
@@ -1383,7 +1389,7 @@
                         
                         const btnMinus = document.createElement('button');
                         btnMinus.type = 'button';
-                        btnMinus.className = 'btn-numeric-adjust';
+                        btnMinus.className = 'btn-numeric-adjust btn-numeric-adjust-left';
                         btnMinus.innerText = '◀';
                         
                         const input = document.createElement('input');
@@ -1402,7 +1408,7 @@
                         
                         const btnPlus = document.createElement('button');
                         btnPlus.type = 'button';
-                        btnPlus.className = 'btn-numeric-adjust';
+                        btnPlus.className = 'btn-numeric-adjust btn-numeric-adjust-right';
                         btnPlus.innerText = '▶';
                         
                         const minVal = params.min !== undefined ? Number(params.min) : -Infinity;
@@ -1755,7 +1761,7 @@
                     
                     const btnMinus = document.createElement('button');
                     btnMinus.type = 'button';
-                    btnMinus.className = 'btn-numeric-adjust';
+                    btnMinus.className = 'btn-numeric-adjust btn-numeric-adjust-left';
                     btnMinus.innerText = '◀';
                     //btnMinus.style.width = '2.5rem';
                     
@@ -1770,7 +1776,7 @@
                     
                     const btnPlus = document.createElement('button');
                     btnPlus.type = 'button';
-                    btnPlus.className = 'btn-numeric-adjust';
+                    btnPlus.className = 'btn-numeric-adjust btn-numeric-adjust-right';
                     btnPlus.innerText = '▶';
                     //btnPlus.style.width = '2.5rem';
                     
@@ -1791,6 +1797,8 @@
                     
                     const utilGroup = document.createElement('div');
                     utilGroup.className = 'seed-utility-group';
+                    const gap = document.createElement('div');
+                    gap.style.width = '6px';
                     
                     // 自动计算提取 ComfyUI 在 SEED 控件后配置的 control_after_generate 伴生控件
                     const seedWidgetIndex = parentNode ? parentNode.widgets.indexOf(parentWidget) : -1;
@@ -1884,6 +1892,7 @@
                     seedContainer.appendChild(btnMinus);
                     seedContainer.appendChild(input);
                     seedContainer.appendChild(btnPlus);
+                    seedContainer.appendChild(gap);
                     seedContainer.appendChild(utilGroup); // 👈 胶囊整体塞在最右侧
                     
                     group.appendChild(seedContainer);
@@ -1896,6 +1905,7 @@
                     
                         const input = document.createElement('textarea');
                         input.className = 'tight-textarea';
+                        input.style.height = '72px';
                         input.value = currentValue ?? '';
                         input.id = `input_${key}`;
                         input.rows = 1;

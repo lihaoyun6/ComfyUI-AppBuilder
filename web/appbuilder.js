@@ -416,6 +416,16 @@ app.registerExtension({
                     const savedJson = info.widgets_values[0];
                     this.buildDynamicUI(savedJson, true, info.widgets_values); 
                 }
+                
+                setTimeout(() => {
+                    const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
+                    if (autoOpenWidget && autoOpenWidget.value === true) {
+                        const btnAppView = this.widgets?.find(w => w.name === "📱 Open in AppView" || w.value === "btn_app_view");
+                        if (btnAppView && btnAppView.callback) {
+                            btnAppView.callback(); // 自动模拟点击“Open in AppView”，瞬间弹出窗口！
+                        }
+                    }
+                }, 500); // 延迟 600ms 避开加载期，确保安全稳定弹出
             };
 
             const onNodeCreated = nodeType.prototype.onNodeCreated;
@@ -519,11 +529,6 @@ app.registerExtension({
                     if (onRemoved) onRemoved.apply(this, arguments);
                 };
 
-                // 👇【核心修改：只添加一个配置按钮，完全删除旧的 Lock / Update 等繁琐组件】
-                this.addWidget("button", "⚙️ Configure Panel", "btn_configure", () => {
-                    openConfigOverlay(this.id);
-                });
-
                 const btnWidget = this.addWidget("button", "📱 Open in AppView", "btn_app_view", () => {
                     const htmlUrl = new URL('app_view.html', import.meta.url);
                     htmlUrl.searchParams.set('nodeId', this.id); 
@@ -566,6 +571,27 @@ app.registerExtension({
                 // 👇 【核心修复】：利用 Object.defineProperty 绕过只读 Getter 限制，强行重写绘制高度
                 Object.defineProperty(btnWidget, 'height', { get() { return 40; }, configurable: true });
                 btnWidget.computeSize = function(width) { return [width, 40]; };
+                
+                this.addWidget("button", "⚙️ Configure Panel", "btn_configure", () => {
+                    openConfigOverlay(this.id);
+                });
+                
+                this.addWidget("toggle", "Auto Launch", false, (v) => {
+                    if (v) {
+                        const nodes = [
+                            ...app.graph.findNodesByType("AppBuilderAdv"),
+                            ...app.graph.findNodesByType("AppBuilder")
+                        ];
+                        const otherNodes = nodes.filter(n => n.id !== this.id);
+                        otherNodes.forEach(n => {
+                            const otherToggle = n.widgets?.find(w => w.name === "Auto Launch");
+                            if (otherToggle && otherToggle.value === true) {
+                                otherToggle.value = false;
+                                if (otherToggle.callback) otherToggle.callback(false);
+                            }
+                        });
+                    }
+                }, {});
                 
                 this.hideWidget = function(widget) {
                     if (!widget._origType) widget._origType = widget.type;
@@ -619,7 +645,8 @@ app.registerExtension({
                         w.name === "config_json" || 
                         w.name === "live_preview" || 
                         w.value === "btn_configure" || 
-                        w.value === "btn_app_view"
+                        w.value === "btn_app_view" ||
+                        w.name === "Auto Launch"
                     );
 
                     for (let i = this.widgets.length - 1; i >= 0; i--) {
@@ -1018,11 +1045,23 @@ app.registerExtension({
                 if (name === "group_name" || name === "bypasser_name") notifyConnectedAppBuilder(this);
             };
         }
-
-        // ==========================================
-        // 节点 B：主控制节点 (AppBuilder)
-        // ==========================================
+        
         if (nodeData.name === "AppBuilder") {
+            const onConfigure = nodeType.prototype.onConfigure;
+            nodeType.prototype.onConfigure = function (info) {
+                if (onConfigure) onConfigure.apply(this, arguments);
+                
+                setTimeout(() => {
+                    const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
+                    if (autoOpenWidget && autoOpenWidget.value === true) {
+                        const btnAppView = this.widgets?.find(w => w.name === "📱 Open in AppView" || w.value === "btn_app_view");
+                        if (btnAppView && btnAppView.callback) {
+                            btnAppView.callback(); // 自动模拟点击“Open in AppView”，瞬间弹出窗口！
+                        }
+                    }
+                }, 500); // 延迟 600ms 避开加载期，确保安全稳定弹出
+            };
+            
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
@@ -1179,6 +1218,29 @@ app.registerExtension({
                 });
                 Object.defineProperty(btnWidget, 'height', { get() { return 40; }, configurable: true });
                 btnWidget.computeSize = function(width) { return [width, 40]; };
+                
+                this.addWidget("toggle", "Auto Launch", false, (v) => {
+                    if (v) {
+                        const nodes = [
+                            ...app.graph.findNodesByType("AppBuilderAdv"),
+                            ...app.graph.findNodesByType("AppBuilder")
+                        ];
+                        const otherNodes = nodes.filter(n => n.id !== this.id);
+                        otherNodes.forEach(n => {
+                            const otherToggle = n.widgets?.find(w => w.name === "Auto Launch");
+                            if (otherToggle && otherToggle.value === true) {
+                                otherToggle.value = false;
+                                if (otherToggle.callback) otherToggle.callback(false);
+                            }
+                        });
+                    }
+                }, {});
+                
+                // 👇 注册开关 2：标题显示开关 (默认开启)
+                this.addWidget("toggle", "Short Title", false, (v) => {
+                    this.syncAllConnections(); // 切换时立刻重构全图参数标签
+                }, {});
+                
                 // 在 onNodeCreated 接近末尾 return r; 之前：
                 if (this.inputs) {
                     for (let i = this.inputs.length - 1; i >= 0; i--) {
@@ -1268,6 +1330,11 @@ app.registerExtension({
                     let pType = "STRING"; 
                     let pOpts = {}; 
                     let pValues = undefined;
+                    let isSupported = false;
+                    
+                    const shortTitleWidget = this.widgets?.find(w => w.name === "Short Title");
+                    const shortTitle = shortTitleWidget ? shortTitleWidget.value : false;
+                    const displayName = shortTitle ? targetSlotName : `${targetSlotName} (${targetNode.title || targetNode.type})`;
                     
                     // 终极通道 A
                     const nodeDefs = app.nodeDefs || app.node_defs || (app.extensionManager ? app.extensionManager.nodeDefs : null);
@@ -1284,16 +1351,15 @@ app.registerExtension({
                             if (Array.isArray(typeInfo)) { 
                                 pType = "COMBO"; 
                                 pValues = typeInfo; 
+                                isSupported = true; // 下拉框属于合法参数
                             } else if (typeInfo === "COMBO" || (pOpts && Array.isArray(optionsList))) {
                                 pType = "COMBO";
                                 pValues = optionsList; 
+                                isSupported = true; // 下拉框属于合法参数
                             }
-                            else if (typeInfo === "INT") pType = "INT";
-                            else if (typeInfo === "FLOAT") pType = "FLOAT";
-                            else if (typeInfo === "BOOLEAN") pType = "BOOLEAN";
-                            else if (typeInfo === "STRING") pType = "STRING";
-                            else {
+                            else if (["INT", "FLOAT", "BOOLEAN", "STRING"].includes(String(typeInfo).toUpperCase())) {
                                 pType = String(typeInfo).toUpperCase();
+                                isSupported = true; // 常规数字、文本、开关属于合法参数
                             }
                         }
                     }
@@ -1310,6 +1376,7 @@ app.registerExtension({
                             if (wType === "COMBO" || Array.isArray(liveOptionsList)) {
                                 pType = "COMBO";
                                 pValues = liveOptionsList;
+                                isSupported = true;
                             }
                         }
                     }
@@ -1319,8 +1386,21 @@ app.registerExtension({
                     
                     if (pType === "COMBO" && tTitle.includes("load") && (tSlot.includes("image") || tSlot.includes("video") || tSlot.includes("file"))) {
                         pType = "UPLOADER";
+                        isSupported = true;
                     } else if (pType === "INT" && tSlot.includes("seed")) {
                         pType = "SEED";
+                        isSupported = true;
+                    }
+                    
+                    if (!isSupported) {
+                        const nodeName = targetNode.title || targetNode.type;
+                        const illegalType = targetSlot.type || "Unknown";
+                        
+                        alert(`⚠️ Connection Rejected\n\nUnsupported connection type "${illegalType}"`);
+                        
+                        app.graph.removeLink(link.id);
+                        this.setDirtyCanvas(true, true);
+                        return; // 中断此次扫描，防止生成废旧控件
                     }
                     
                     // ==========================================
@@ -1355,17 +1435,17 @@ app.registerExtension({
                     
                     config[key] = { 
                         type: pType, 
-                        name: `${targetSlotName} [${targetNode.title || targetNode.type}]`, 
+                        name: displayName, 
                         default: pOpts.default, 
-                            value: activeValue, // 🔥 写入被完美保护的数值
-                            min: pOpts.min, 
-                            max: pOpts.max, 
-                            step: pOpts.step, 
-                            precision: derivedPrecision, 
-                            display: pOpts.display,
-                            values: pValues, 
-                            multiline: !!pOpts.multiline, 
-                            _slot: outIdx 
+                        value: activeValue, // 🔥 写入被完美保护的数值
+                        min: pOpts.min, 
+                        max: pOpts.max, 
+                        step: pOpts.step, 
+                        precision: derivedPrecision, 
+                        display: pOpts.display,
+                        values: pValues, 
+                        multiline: !!pOpts.multiline, 
+                        _slot: outIdx 
                     };
                     validKeys.push(key);
                 });
@@ -1443,7 +1523,7 @@ app.registerExtension({
                     // 保护过滤名单：加入了对活动中上传按钮的保护
                     const isProtected = [
                         "config_json", "control_after_generate", "btn_app_view", 
-                        "converted-widget", "hidden_parameter"
+                        "converted-widget", "hidden_parameter", "Auto Launch", "Short Title", "📱 Open in AppView"
                     ].includes(w.name) || w.value === "btn_app_view" || w.type === "hidden_parameter" || 
                     (w.value === "Upload" && w.associatedKey && validKeys.includes(w.associatedKey)); // 🔥 保护活跃的上传按钮
                     
@@ -1568,8 +1648,10 @@ app.registerExtension({
                     w.name === "config_json" || 
                     w.name === "converted-widget" || 
                     w.type === "hidden_parameter" || 
-                    w.name === "btn_app_view" || 
-                    w.value === "btn_app_view"
+                    w.name === "📱 Open in AppView" || 
+                    w.value === "btn_app_view" ||
+                    w.name === "Auto Launch" ||       // 🔥 强制留在最顶部
+                    w.name === "Short Title"
                 );
                 
                 const sortedDynamicWidgets = [];
