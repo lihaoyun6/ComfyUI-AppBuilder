@@ -901,31 +901,20 @@
             }
         }
         
-        // 👇【终极升级】：引入增量自增 ID 追踪机制。刷新时自动拉回完整 400 行历史；正常运行时仅增量拉取新行，互不干扰
-        let logPollInterval = null;
-        window._lastLogId = 0; // 👈 核心：全局追踪本地当前接收到的最大日志 ID 标示
-        
-        function startLogPolling() {
-            if (logPollInterval) return;
-            
-            logPollInterval = setInterval(async () => {
-                try {
-                    // 1. 发起增量拉取请求（传递本地最大 ID）
-                    const res = await fetch(`/appbuilder/logs?after=${window._lastLogId}`);
-                    if (res.ok) {
-                        const logs = await res.json();
-                        if (Array.isArray(logs) && logs.length > 0) {
-                            logs.forEach(item => {
-                                addRawTerminalLog(item.text); // 将清洗后的文本渲染
-                            });
-                            // 2. 核心：更新本地最大已接收日志 ID
-                            window._lastLogId = logs[logs.length - 1].id;
-                        }
-                    }
-                } catch (err) {
-                    console.warn("Polling logs failed:", err);
+        let lastLogId = 0;
+        async function restoreLogHistory() {
+            try {
+                const res = await fetch(`/appbuilder/logs?after=0`);
+                if (res.ok) {
+                    const logs = await res.json();
+                    logs.forEach(log => {
+                        appendLog(log.text); // 将历史日志渲染到界面上
+                        lastLogId = Math.max(lastLogId, log.id); // 更新最后一条 ID
+                    });
                 }
-            }, 500); 
+            } catch (e) {
+                console.error("Failed to restore log history:", e);
+            }
         }
         
         // 💻 必须在全局作用域声明此变量（放在脚本最上方），用于锁定并原位重写 KSampler 跑步进度
@@ -1099,6 +1088,12 @@
                     }
                 }
             }
+            else if (msg.type === "appbuilder_log") {
+                if (detail && detail.text) {
+                    appendLog(detail.text); // 直接流式写入终端，0ms 延迟！
+                    if (detail.id) lastLogId = Math.max(lastLogId, detail.id);
+                }
+            }
         });
         
         // 页面初始化
@@ -1185,7 +1180,7 @@
                         }
                     };
                     
-                    startLogPolling();
+                    restoreLogHistory();
                     
                     document.getElementById('theme-toggle').onclick = () => {
                         const isLight = document.documentElement.classList.toggle('light-theme');

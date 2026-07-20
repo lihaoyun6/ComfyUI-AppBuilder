@@ -20,7 +20,6 @@ class AppBuilder:
             }
         }
     
-    # 允许动态任意类型的输出
     RETURN_TYPES = tuple(["*"])
     RETURN_NAMES = tuple(["any"])
     FUNCTION = "main"
@@ -39,7 +38,6 @@ class AppBuilderBypasser:
             },
         }
     
-    # 🔥 现在输出为 BYPASSER 类型，只能连给 Builder 节点的左侧
     RETURN_TYPES = ("BYPASSER",)
     RETURN_NAMES = ("bypasser",)
     FUNCTION = "main"
@@ -70,7 +68,6 @@ class AppBuilderAdv:
     CATEGORY = "AppBuilder"
     DESCRIPTION = "Generate custom control panel and application view."
     
-    # 使用这个类方法来绕过 ComfyUI 后端的严格类型检查
     @classmethod
     def VALIDATE_INPUTS(cls, **kwargs):
         return True
@@ -146,9 +143,11 @@ async def get_models_list(request):
     return web.json_response([], status=404)
 
 
-# 1. 限制队列最大长度 420 行。存储格式为 (log_id, log_text) 元组
+# --------------------------------------------------
+# 日志处理中心：高速缓存队列
+# --------------------------------------------------
 log_buffer = collections.deque(maxlen=420)
-log_counter = 0 # 全局自增日志序列号
+log_counter = 0 
 
 class ComfyUIAppViewLogHandler(logging.Handler):
     def emit(self, record):
@@ -157,18 +156,28 @@ class ComfyUIAppViewLogHandler(logging.Handler):
             msg = self.format(record)
             if msg.strip():
                 log_counter += 1
-                log_buffer.append((log_counter, msg)) # 👈 写入自增 ID 标识
+                log_buffer.append((log_counter, msg)) 
+                
+                # 🔥 终极升级：通过原生 WebSocket 零延迟直接推送最新日志！
+                try:
+                    if PromptServer.instance.user_sockets:
+                        # 推送的数据结构和 get_captured_logs 完全一致
+                        PromptServer.instance.send_sync("appbuilder_log", {"id": log_counter, "text": msg})
+                except Exception:
+                    pass
         except Exception:
             self.handleError(record)
             
-# 挂载日志记录器
+# 挂载标准 Logger 监听
 root_logger = logging.getLogger()
 i18n_log_handler = ComfyUIAppViewLogHandler()
 i18n_log_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 root_logger.addHandler(i18n_log_handler)
 
 
-# 2. 原生输出流包装，专司 tqdm 进度条捕获
+# --------------------------------------------------
+# 标准输出重定向器：专司捕捉进度条 (tqdm)
+# --------------------------------------------------
 class LogStreamWrapper:
     def __init__(self, original_stream):
         self.original_stream = original_stream
@@ -178,11 +187,17 @@ class LogStreamWrapper:
         self.original_stream.write(data)
         clean_data = data.strip()
         if clean_data:
-            # 过滤普通 INFO 日志避免重复，只捕获进度条
             is_progress = "%|" in clean_data or "it/s" in clean_data or "s/it" in clean_data
             if is_progress:
                 log_counter += 1
-                log_buffer.append((log_counter, clean_data)) # 👈 写入自增 ID 标识
+                log_buffer.append((log_counter, clean_data))
+                
+                # 🔥 终极升级：进度条数据同样走 WebSocket 高速通道实时灌注！
+                try:
+                    if PromptServer.instance.user_sockets:
+                        PromptServer.instance.send_sync("appbuilder_log", {"id": log_counter, "text": clean_data})
+                except Exception:
+                    pass
                 
     def flush(self):
         self.original_stream.flush()
@@ -191,7 +206,9 @@ sys.stdout = LogStreamWrapper(sys.stdout)
 sys.stderr = LogStreamWrapper(sys.stderr)
 
 
-# 3. 👈【终极升级】：支持增量拉取的日志获取路由。实现刷新不丢历史、多端同时共享日志！
+# --------------------------------------------------
+# 增量日志 HTTP 获取路由 (保留作为打开网页时的“历史恢复通道”)
+# --------------------------------------------------
 @PromptServer.instance.routes.get("/appbuilder/logs")
 async def get_captured_logs(request):
     try:
