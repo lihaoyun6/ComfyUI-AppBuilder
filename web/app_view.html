@@ -840,6 +840,15 @@
             !/Chrome|CriOS|Edg|OPR|Firefox|FxiOS/.test(ua);
         }
         
+        function isChrome() {
+            if (navigator.userAgentData) {
+                return navigator.userAgentData.brands.some(b => b.brand === "Google Chrome");
+            }
+            
+            const ua = navigator.userAgent;
+            return ua.includes("Chrome") && !ua.includes("Edg") && !ua.includes("OPR");
+        }
+        
         function t(key, defaultText, ...args) {
             let text = translations[key] || defaultText;
             if (args.length > 0) {
@@ -1100,7 +1109,7 @@
         window.addEventListener('DOMContentLoaded', async () => {
             await loadI18n();
             
-            if (navigator.userAgentData?.brands.some(b => b.brand === "Google Chrome")) {
+            if (isChrome()) {
                 document.documentElement.classList.add("chrome-only");
             }
             
