@@ -917,7 +917,7 @@
                 if (res.ok) {
                     const logs = await res.json();
                     logs.forEach(log => {
-                        appendLog(log.text); // 将历史日志渲染到界面上
+                        addRawTerminalLog(log.text); // 将历史日志渲染到界面上
                         lastLogId = Math.max(lastLogId, log.id); // 更新最后一条 ID
                     });
                 }
@@ -1099,7 +1099,7 @@
             }
             else if (msg.type === "appbuilder_log") {
                 if (detail && detail.text) {
-                    appendLog(detail.text); // 直接流式写入终端，0ms 延迟！
+                    addRawTerminalLog(detail.text); // 直接流式写入终端，0ms 延迟！
                     if (detail.id) lastLogId = Math.max(lastLogId, detail.id);
                 }
             }
