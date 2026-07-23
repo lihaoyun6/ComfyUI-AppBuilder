@@ -1,3 +1,4 @@
+import os
 import sys
 import json
 import logging
@@ -158,11 +159,8 @@ class ComfyUIAppViewLogHandler(logging.Handler):
                 log_counter += 1
                 log_buffer.append((log_counter, msg)) 
                 
-                # 🔥 终极升级：通过原生 WebSocket 零延迟直接推送最新日志！
                 try:
-                    if PromptServer.instance.user_sockets:
-                        # 推送的数据结构和 get_captured_logs 完全一致
-                        PromptServer.instance.send_sync("appbuilder_log", {"id": log_counter, "text": msg})
+                    PromptServer.instance.send_sync("appbuilder_log", {"id": log_counter, "text": msg})
                 except Exception:
                     pass
         except Exception:
@@ -170,10 +168,9 @@ class ComfyUIAppViewLogHandler(logging.Handler):
             
 # 挂载标准 Logger 监听
 root_logger = logging.getLogger()
-i18n_log_handler = ComfyUIAppViewLogHandler()
-i18n_log_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-root_logger.addHandler(i18n_log_handler)
-
+log_handler = ComfyUIAppViewLogHandler()
+log_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+root_logger.addHandler(log_handler)
 
 # --------------------------------------------------
 # 标准输出重定向器：专司捕捉进度条 (tqdm)
@@ -184,21 +181,25 @@ class LogStreamWrapper:
         
     def write(self, data):
         global log_counter
+        # 1. 保留原本输出
         self.original_stream.write(data)
-        clean_data = data.strip()
-        if clean_data:
-            is_progress = "%|" in clean_data or "it/s" in clean_data or "s/it" in clean_data
-            if is_progress:
+        
+        # 🔥 核心修改：利用 \r (回车符) 物理特征，100% 降维打击、精准拦截所有进度条碎片！
+        is_progress = "\r" in data or "%|" in data or "it/s" in data or "s/it" in data
+        
+        if is_progress:
+            # 去除回车符，提取出干净的进度条文本
+            clean_data = data.replace("\r", "").strip()
+            if clean_data:
                 log_counter += 1
                 log_buffer.append((log_counter, clean_data))
                 
-                # 🔥 终极升级：进度条数据同样走 WebSocket 高速通道实时灌注！
+                # 直接通过 WebSocket 流式推送到前端
                 try:
-                    if PromptServer.instance.user_sockets:
-                        PromptServer.instance.send_sync("appbuilder_log", {"id": log_counter, "text": clean_data})
+                    PromptServer.instance.send_sync("appbuilder_log", {"id": log_counter, "text": clean_data})
                 except Exception:
                     pass
-                
+                    
     def flush(self):
         self.original_stream.flush()
         
@@ -223,6 +224,54 @@ async def get_captured_logs(request):
             new_logs.append({"id": log_id, "text": line})
             
     return web.json_response(new_logs)
+
+# 解析 ComfyUI 根目录下的 user/default/workflows/app 目录
+def get_app_workflows_dir():
+    base_dir = os.path.join(folder_paths.get_user_directory(), "default")
+    app_dir = os.path.join(base_dir, "workflows", "app")
+    if not os.path.exists(app_dir):
+        os.makedirs(app_dir, exist_ok=True)
+    return app_dir
+
+# 路由 1：获取工作流列表，并输出其名字、大小、修改时间
+@PromptServer.instance.routes.get("/appbuilder/workflows")
+async def list_app_workflows(request):
+    try:
+        target_dir = get_app_workflows_dir()
+        print(target_dir)
+        files = []
+        for f in os.listdir(target_dir):
+            if f.endswith(".json"):
+                full_path = os.path.join(target_dir, f)
+                stat = os.stat(full_path)
+                files.append({
+                    "name": f,
+                    "mtime": stat.st_mtime, # 用于前端时间排序
+                    "size": stat.st_size
+                })
+        return web.json_response(files)
+    except Exception as e:
+        return web.json_response([], status=500)
+    
+# 路由 2：根据文件名，安全、无损地返回 JSON 树
+@PromptServer.instance.routes.get("/appbuilder/workflows/get")
+async def get_app_workflow_content(request):
+    try:
+        filename = request.query.get("file")
+        # 基础防跨目录攻击过滤
+        if not filename or ".." in filename or "/" in filename or "\\" in filename:
+            return web.json_response({"error": "Invalid filename"}, status=400)
+        
+        target_dir = get_app_workflows_dir()
+        full_path = os.path.join(target_dir, filename)
+        
+        if os.path.exists(full_path):
+            with open(full_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return web.json_response(data)
+        return web.json_response({"error": "File not found"}, status=404)
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
 
 NODE_CLASS_MAPPINGS = {
     "AppBuilder": AppBuilder,

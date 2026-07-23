@@ -37,6 +37,20 @@
             --shadow: rgb(0,0,0,0.);
             --red: #dc4125;
         }
+        
+        .splash-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background-color: var(--bg); z-index: 999999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), visibility 0s linear 0.4s; opacity: 1; visibility: visible;
+        }
+        .splash-screen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+        .splash-content { text-align: center; }
+        .splash-icon { font-size: 64px; display: block; margin-bottom: 16px; }
+        .splash-title {
+            font-size: 24px; font-weight: bold; color: var(--text); letter-spacing: 1.5px;
+            font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui,sans-serif;
+        }
+        
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
         html, body {
@@ -46,7 +60,6 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg); color: var(--text);
             display: flex; flex-direction: column;  height: 100dvh; overflow: hidden; 
             /* 👈【核心新增】：全局禁用文本框选与长按手势（彻底解决长按击穿Bug） */
             -webkit-user-select: none; /* iOS Safari */
@@ -117,9 +130,7 @@
         
         /* 4. 清除按钮：作为静止的兄弟节点，彻底免疫弹性回弹 */
         .gallery-clear-btn {
-            flex-shrink: 0;
-            width: 3rem; height: 60px; border-radius: 8px;
-            background-color: #444; border: none;
+            flex-shrink: 0; width: 3rem; height: 60px; border-radius: 8px; background-color: #444; border: none;
             color: #FFF; font-size: 18px; font-weight: bold; cursor: pointer;
             display: flex; align-items: center; justify-content: center;
         }
@@ -165,7 +176,7 @@
         /* 紧凑参数区：由于画廊手机端在最下侧，Padding只需要 150px（按钮+画廊） */
         .controls-section {
             flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
-            padding: 12px 16px; padding-bottom: 150px; background-color: var(--bg-color);
+            padding: 8px 16px; padding-bottom: 150px; background-color: var(--bg-color);
         }
         .controls-section::-webkit-scrollbar { display: none; }
         .control-group { margin-bottom: 8px;}
@@ -382,7 +393,7 @@
         }
         
         /* 👇 修改：停止按钮。采用深红色（#A6433F），宽度为 60px 的紧凑正方形，增加鼠标经过高光 */
-        .btn-stop { background-color: var(--red); flex: 1; font-size: 20px !important; }
+        .btn-stop { background-color: var(--red); flex: 1; }
         .btn-stop:hover { filter: brightness(1.2); }
 
         /* 模态浮层基类 */
@@ -438,7 +449,7 @@
             background-color: var(--bg) !important; border: 2px solid var(--border) !important; border-radius: 8px !important;
             flex: 3rem 0 0; color: #fff; text-align: center; outline: none; touch-action: manipulation;
             padding-left: 4px !important; padding-right: 4px !important; height: 40px !important;
-        }f
+        }
         
         .theme-toggle-btn {
             position: absolute; top: 10px; right: 10px; padding: 3px 10px; cursor: pointer;
@@ -466,15 +477,12 @@
         .log-line.error { color: var(--red); }
         .log-line.error .log-tag { color: var(--red); }
 
-        .btn-console { 
-            background-color: #444; color: #fff; flex: 0 0 3rem; font-size: 16px !important;
-            font-family: monospace; padding-top: 0px; padding-left: 0px;
-        }
+        .btn-console { background-color: #444; color: #fff; flex: 0 0 3rem; padding-top: 0; padding-left: 0;}
         .btn-console:hover { filter: brightness(1.2); }
         .btn-console.active { background-color: var(--primary); }
         
         /* 👇【新增】：主布局容器，继承原先 body 的响应式行为 */
-        .main-layout { display: flex; flex-direction: column; flex: 1; width: 100%; overflow: hidden; }
+        .main-layout { display: flex; flex-direction: column; flex: 1; width: 100%; overflow: hidden; background-color: var(--bg);}
         
         /* 👇【新增】：底部日志推起抽屉容器 */
         .log-drawer-container {
@@ -521,8 +529,7 @@
             border: none;
             color: var(--title);
             height: 100%;
-            padding: 0 12px;
-            font-size: 14px;
+            width: 2.5rem;
             font-weight: bold;
             cursor: pointer;
             display: flex;
@@ -608,7 +615,7 @@
             /* 横屏PC端画廊高度 */
             .gallery-container { flex: 0 0 100px !important; height: 100px !important; border-radius: 0px; padding-top: 0px; }
             .gallery-item { height: 80px !important; }
-            .gallery-clear-btn { height: 40px !important; font-size: 14px; transform: translateX(6px); }
+            .gallery-clear-btn { height: 40px !important; }
             .gallery-item-placeholder { width: 80px !important; height: 80px !important; }
             
             
@@ -628,47 +635,51 @@
             .bottom-action-bar, .gallery-container, .resizer { border-radius: 0px; box-shadow: none; }
         }
         
-        /* 👇【全新新增】：悬浮启动页样式 */
-        .splash-screen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100dvh;
-            background-color: var(--bg); /* 自动同步深浅色背景，防止瞬间刺眼闪烁 */
-            z-index: 999999; /* 确保处于绝对最顶层 */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            transition: opacity 0.3s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.3s;
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        /* 渐隐隐藏状态 */
-        .splash-screen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
-        .splash-content { text-align: center; animation: splashZoomIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        .splash-icon { font-size: 64px; display: block; margin-bottom: 16px; }
-        .splash-title {
-            font-size: 24px; font-weight: bold; color: var(--text); letter-spacing: 1.5px;
-            font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui,sans-serif;
-        }
-        
-        /* 缩放加微透入场动效 */
-        @keyframes splashZoomIn {
-            from {
-                transform: scale(0.85);
-                opacity: 0;
-            }
-            to {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-        
-        .chrome-only #refresh-btn {
+        .chrome-only #refresh-btn1 {
             font-size: 23px; font-weight: normal !important; padding-bottom: 3px; -webkit-text-stroke: 0px currentColor !important;
         }
     </style>
+    <script>
+        const getSystemTheme = () => {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        };
+        
+        const themeButtonText = (theme) => {
+            const btn = document.getElementById("theme-toggle");
+            if (btn) {
+                if (theme === 'system') btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot-icon lucide-circle-dot"><path d="M 12 2 A 10 10 0 0 0 12 22 Z" fill="currentColor"/><circle cx="12" cy="12" r="10"/></svg>';
+                else if (theme === 'light') btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sun-icon lucide-sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+                else btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-moon-icon lucide-moon"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>';
+            }
+        }
+        
+        const applyTheme = (theme, btn) => {
+            let activeTheme = theme;
+            if (theme === 'system') activeTheme = getSystemTheme();
+            
+            // 应用到 HTML 根节点上
+            if (activeTheme === 'light') {
+                document.documentElement.classList.add('light-theme');
+                document.documentElement.classList.remove('dark-theme');
+            } else {
+                document.documentElement.classList.add('dark-theme');
+                document.documentElement.classList.remove('light-theme');
+            }
+            themeButtonText(theme);
+        };
+        
+        // 页面初始化时，读取状态并应用
+        const savedTheme = localStorage.getItem('appview_theme') || 'system';
+        applyTheme(savedTheme, null);
+        
+        // 🔥 核心：监听系统/设备主题变动。当用户选为 Auto 时，系统夜间模式一开，网页瞬间秒变深色！
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            const currentTheme = localStorage.getItem('appview_theme') || 'system';
+            if (currentTheme === 'system') {
+                applyTheme('system');
+            }
+        });
+    </script>
 </head>
 <body>
     <div id="splash-screen" class="splash-screen">
@@ -690,27 +701,33 @@
             <div class="preview-section">
                 <div class="header-bar">
                     <div class="header-btn-group">
-                        <button class="header-btn" id="iframe-close-btn" style="display: none;" data-i18n="back_to_comfyui" title="Back to ComfyUI">&#10094; Back</button>
-                        <button class="header-btn" id="refresh-btn" style="display: none; -webkit-text-stroke: 0.5px currentColor;" title="Refresh">↻</button>
-                        <button class="header-btn" id="theme-toggle" style="-webkit-text-stroke: 1.2px currentColor;" title="Appearance">◐</button>
+                        <button class="header-btn" id="iframe-close-btn" style="display: none;" title="Back to ComfyUI">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                        <button class="header-btn" id="refresh-btn" style="display: none;" title="Refresh">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-refresh-cw-icon lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                        </button>
+                        <button class="header-btn" id="theme-toggle" title="Appearance">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot-icon lucide-circle-dot"><path d="M 12 2 A 10 10 0 0 0 12 22 Z" fill="currentColor"/><circle cx="12" cy="12" r="10"/></svg>
+                        </button>
                     </div>
                     <span class="header-status-badge" id="status-text" data-i18n="label_ready">Ready</span>
                 </div>
                 
                 <img id="main-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23555'/><text x='50%' y='50%' fill='%23999' font-size='16' text-anchor='middle' alignment-baseline='middle'>No Media</text></svg>">
             </div>
-            <!-- 结果历史画廊挂载点（外层：静止不滚动） -->
+            
             <div class="gallery-container" id="gallery">
-                <!-- 滚动图片区域（内层：专门负责滚动） -->
                 <div class="gallery-scroll-wrap" id="gallery-scroll"></div>
-                <!-- 清除按钮（完全隔离在滚动区之外） -->
-                <button class="gallery-clear-btn" id="btn-clear-gallery">⌫</button>
+                <button class="gallery-clear-btn" id="btn-clear-gallery" title-i18n="clear_gallery" title="Clear gallery">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
             </div>
         </div>
         
         <div class="right-panel">
             <div id="resizer" class="resizer"></div>
-            
+            <!--<div style="text-align:center; background: var(--bg-color); padding-bottom: 8px; color: var(--title); font-size: 12px;">App Name</div>-->
             <div class="controls-section" id="dynamic-form">
                 <p style="color:#aaa; text-align:center; margin-top:20px;" data-i18n="loading_ui">Loading UI...</p>
             </div>
@@ -722,8 +739,12 @@
                         <span class="queue-badge" id="queue-badge"></span>
                         <button class="btn btn-run" id="btn-run" data-i18n="button_run">▷ Run</button>
                     </div>
-                    <button class="btn btn-stop" id="btn-stop">&times;</button>
-                    <button class="btn btn-console" id="console-toggle">>_</button>
+                    <button class="btn btn-stop" id="btn-stop" title-i18n="cancel_run" title="Cancel current run">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                    <button class="btn btn-console" id="console-toggle" title-i18n="open_console" title="Open console">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-terminal-icon lucide-terminal"><path d="M12 19h8"/><path d="m4 17 6-6-6-6"/></svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -760,9 +781,8 @@
         <img class="lightbox-content" id="lightbox-img">
         <button class="lightbox-arrow lightbox-arrow-right" id="lightbox-next">&#10095;</button>
     </div>
-
+    <script type="text/javascript" src="./i18n.js"></script>
     <script>
-        let translations = {};
         let sourceNodeId = null;
         let activeInputEl = null;
         
@@ -826,14 +846,7 @@
             
             testImg.src = src;
         }
-        
-        const savedTheme = localStorage.getItem('appview_theme') || 'dark';
-        if (savedTheme === 'light') {
-            document.documentElement.classList.add('light-theme');
-        } else {
-            document.documentElement.classList.remove('light-theme');
-        }
-        
+
         function isSafari() {
             const ua = navigator.userAgent;
             return /Safari/.test(ua) &&
@@ -847,54 +860,6 @@
             
             const ua = navigator.userAgent;
             return ua.includes("Chrome") && !ua.includes("Edg") && !ua.includes("OPR");
-        }
-        
-        function t(key, defaultText, ...args) {
-            let text = translations[key] || defaultText;
-            if (args.length > 0) {
-                args.forEach((arg, idx) => {
-                    text = text.replace(`{${idx}}`, arg);
-                });
-            }
-            return text;
-        }
-        
-        async function loadI18n() {
-            // 默认获取浏览器语言
-            let locale = navigator.language.split(/[-_]/)[0];
-            try {
-                const parentWindow = window.parent !== window ? window.parent : (window.opener && !window.opener.closed ? window.opener : null);
-                
-                if (parentWindow && parentWindow.comfyApp && parentWindow.comfyApp.ui) {
-                    locale = parentWindow.comfyApp.ui.settings.getSettingValue("Comfy.Locale") || "en";
-                }
-            } catch (e) { console.warn(e); }
-            
-            if (locale.startsWith("en")) return;
-            
-            try {
-                const cacheBuster = `?t=${new Date().getTime()}`;
-                const i18nUrl = new URL(`i18n/${locale}.json${cacheBuster}`, window.location.href).href;
-                let res = await fetch(i18nUrl);
-                if (!res.ok) {
-                    const baseLang = locale.split('-')[0];
-                    const baseI18nUrl = new URL(`i18n/${baseLang}.json`, window.location.href).href;
-                    res = await fetch(baseI18nUrl);
-                }
-                if (res.ok) {
-                    translations = await res.json();
-                    applyStaticI18n(); 
-                }
-            } catch (e) {
-                console.warn("Translation load skipped or failed:", e);
-            }
-        }
-        
-        function applyStaticI18n() {
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (translations[key]) el.innerText = translations[key];
-            });
         }
         
         function updateQueueBadge(count) {
@@ -1098,6 +1063,7 @@
                 }
             }
             else if (msg.type === "appbuilder_log") {
+                const detail = msg.detail;
                 if (detail && detail.text) {
                     addRawTerminalLog(detail.text); // 直接流式写入终端，0ms 延迟！
                     if (detail.id) lastLogId = Math.max(lastLogId, detail.id);
@@ -1109,19 +1075,14 @@
         window.addEventListener('DOMContentLoaded', async () => {
             await loadI18n();
             
-            if (isChrome()) {
-                document.documentElement.classList.add("chrome-only");
-            }
-            
+            if (isChrome()) document.documentElement.classList.add("chrome-only");
             setTimeout(() => {
                 const splash = document.getElementById('splash-screen');
                 if (splash) {
-                    splash.classList.add('fade-out'); // 触发 0.5s 渐隐
-                    
-                    // 渐隐动画结束后（500ms），物理删除该元素，释放内存，保证后续交互绝无卡顿
-                    setTimeout(() => { splash.remove(); }, 300);
+                    splash.classList.add('fade-out');
+                    setTimeout(() => { splash.remove(); }, 400);
                 }
-            }, 600);
+            }, 400);
             
             const urlParams = new URLSearchParams(window.location.search);
             const nodeId = urlParams.get('nodeId');
@@ -1191,19 +1152,23 @@
                     
                     restoreLogHistory();
                     
-                    document.getElementById('theme-toggle').onclick = () => {
-                        const isLight = document.documentElement.classList.toggle('light-theme');
-                        localStorage.setItem('appview_theme', isLight ? 'light' : 'dark');
+                    const themeToggleBtn = document.getElementById("theme-toggle");
+                    themeButtonText(localStorage.getItem('appview_theme') || 'system');
+                    themeToggleBtn.onclick = () => {
+                        const currentTheme = localStorage.getItem('appview_theme') || 'system';
+                        let nextTheme = 'system';
+                        
+                        if (currentTheme === 'system') nextTheme = 'light';
+                        else if (currentTheme === 'light') nextTheme = 'dark';
+                        else nextTheme = 'system';
+                        
+                        localStorage.setItem('appview_theme', nextTheme);
+                        applyTheme(nextTheme, themeToggleBtn);
                     };
                     
                     document.getElementById('refresh-btn').onclick = (e) => {
                         e.stopPropagation();
                         location.reload();
-                    };
-                    
-                    document.getElementById('theme-toggle').onclick = () => {
-                        const isLight = document.documentElement.classList.toggle('light-theme');
-                        localStorage.setItem('appview_theme', isLight ? 'light' : 'dark');
                     };
                     
                     // 👇【核心重构 3】：页面加载完毕后，直接把之前同步好的全局数据遍历渲染出来
@@ -1233,8 +1198,7 @@
                             closeBtn.style.display = 'flex'; // 显示关闭按钮
                             closeBtn.onclick = (e) => {
                                 e.stopPropagation();
-                                const parentIframe = parentWindow.document.getElementById('appview-iframe');
-                                if (parentIframe) parentIframe.style.display = 'none';
+                                window.parent.postMessage({ type: "close_appview" }, "*");
                             };
                         }
                         const refreshBtn = document.getElementById('refresh-btn');
@@ -1947,6 +1911,7 @@
                         const editBtn = document.createElement('button');
                         editBtn.className = 'btn-edit-multiline';
                         editBtn.type = 'button';
+                        editBtn.title = t('btn_edit', "Multiline Editor");
                         editBtn.innerText = '📝';
                         editBtn.onclick = () => openMultilineEditor(input, params.name || key);
                         container.appendChild(editBtn);

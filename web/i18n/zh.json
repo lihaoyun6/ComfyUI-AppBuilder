@@ -34,6 +34,8 @@
   "uploader_all": "All (全格式兼容)",
   "save_config": "保存配置",
   "cancel": "取消",
+  "cancel_run": "取消当前任务",
+  "open_console": "显示控制台",
   "max_limit_alert": "已达到 32 个控件的最大限制！",
   "empty_key_alert": "第 {0} 个控件的参数键名（Parameter Key）不能为空！",
   "invalid_key_alert": "参数键名 \"{0}\" 不合规：只能包含英文字母、数字和下划线！",
@@ -101,5 +103,16 @@
   "label_decrement": "自减",
   "label_randomize": "随机",
   "back_to_comfyui": "\u276e 返回",
-  "confirm_clear_gallery": "确认要清空画廊历史记录吗?"
+  "clear_gallery": "清空画廊",
+  "confirm_clear_gallery": "确认要清空画廊历史记录吗?",
+  "btn_edit": "打开编辑器",
+  "title-apps": "🗂️ 我的App",
+  "search_apps": "搜索App...",
+  "available_apps": "{0} 个App",
+  "date_desc": "从新到旧",
+  "date_asc": "从旧到新",
+  "name_asc": "名称正序",
+  "name_desc": "名称倒序",
+  "not_app": "进入 App 模式失败!\n请先使用 AppBuilder 配置此工作流.",
+  "save_confirm": "是否保存修改?"
 }

@@ -2,6 +2,30 @@ import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 import { ComfyWidgets } from "../../scripts/widgets.js";
 
+let i18n = {};
+let baseI18n = {
+    not_app: "This is not an App workflow!\nPlease configure it using AppBuilder first.",
+    save_confirm: "Save changes?",
+};
+
+async function loadI18n() {
+    const comfyLang = app.ui.settings.getSettingValue("Comfy.Locale");
+    const baseUrl = new URL("./i18n/", import.meta.url).href;
+    
+    if (comfyLang !== "en") {
+        try {
+            const responseLang = await fetch(`${baseUrl}${comfyLang}.json`);
+            if (responseLang.ok) {
+                const langData = await responseLang.json();
+                i18n = { ...baseI18n, ...langData };
+            } else { i18n = baseI18n; }
+        } catch (e) {
+            console.log(e);
+            i18n = baseI18n;
+        }
+    } else { i18n = baseI18n; }
+}
+
 const findAllNodes = (nodes, type) => {
     let found = [];
     for (const node of nodes) {
@@ -25,6 +49,237 @@ function isMobile() {
     // iPadOS 13+ 会伪装成 Mac，但有触摸屏
     if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
     return false;
+}
+
+function hideWidget(widget) {
+    if (!widget) return;
+    
+    widget.hidden = true;
+    widget.type = "converted-widget";
+    widget.computeSize = () => [0, -4];
+}
+
+async function setupAPI() {
+    await loadI18n();
+    window.comfyApp = app;
+    window.comfyApi = api;
+    
+    if (isMobile()) {
+        let wfIframe = document.createElement("iframe");
+        wfIframe.id = "app-manager-iframe";
+        
+        // 样式设为 fixed 绝对固定，铺满视口，层级为 30（大厅层）
+        wfIframe.style.cssText = `
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100dvh; z-index: 999998; border: none;
+            pointer-events: auto; background: #121212;
+        `;
+        
+        const htmlUrl = new URL('app_manager.html', import.meta.url);
+        wfIframe.src = htmlUrl.href;
+        
+        document.body.appendChild(wfIframe); // 物理直接塞进最顶层 body 下！
+    }
+    
+    window.addEventListener("message", async (e) => {
+        if (e.data && e.data.type === "close_appview") {
+            if (isMobile()) {
+                await saveActiveWorkflow();
+                setTimeout(async () => { await closeActiveWorkflow(); }, 100);
+            }
+            const iframe = document.getElementById("appview-iframe");
+            if (iframe) iframe.remove(); 
+        }
+        
+        if (e.data && e.data.type === "close_app_manager") {
+            const iframe = document.getElementById("app-manager-iframe");
+            if (iframe) iframe.remove();
+        }
+        
+        if (e.data && e.data.type === "load_workflow") {
+            const filename = e.data.filename;
+            
+            try {
+                const response = await fetch(`/appbuilder/workflows/get?file=${encodeURIComponent(filename)}`);
+                if (response.ok) {
+                    const workflowData = await response.json();
+                    
+                    const nativeFilePath = "app/" + filename;
+                    const cleanName = filename.replace(/\.json$/i, "");
+                    
+                    // ==========================================
+                    // 🔥 核心修改 2：加载前“预防性重筑”（强行重写 isLoaded 为 false，强制重用！）
+                    // ==========================================
+                    try {
+                        const vueApp = document.querySelector('[data-v-app]')?.__vue_app__;
+                        const pinia = vueApp?.config?.globalProperties?.$pinia;
+                        if (pinia && pinia._s) {
+                            for (const [id, store] of pinia._s.entries()) {
+                                if (store && store.workflows) {
+                                    const wfs = Array.isArray(store.workflows) ? store.workflows : Object.values(store.workflows);
+                                    const ghostWf = wfs.find(w => w && (w.filename === cleanName && w.directory === "workflows/app"));
+                                    
+                                    if (ghostWf) {
+                                        ghostWf.originalContent = JSON.stringify(workflowData);
+                                        
+                                        // 🌟 物理重写 isLoaded 属性为 false！
+                                        // 这会强行骗过官方的 `!isLoaded` 拦截，迫使其重用当前标签页，绝不产生 (3) 等副本！
+                                        Object.defineProperty(ghostWf, "isLoaded", {
+                                            get() { return false; },
+                                            set(v) {},
+                                            configurable: true
+                                        });
+                                        
+                                        if (!ghostWf.changeTracker) {
+                                            ghostWf.changeTracker = {
+                                                reset: function(data) { ghostWf._isModified = false; }, 
+                                                restore: function() {},
+                                                deactivate: function() {},
+                                                prepareForSave: function() {},
+                                                captureCanvasState: function() {},
+                                                get activeState() { return app.graph ? app.graph.serialize() : workflowData; },
+                                                get initialState() { return workflowData; }
+                                            };
+                                        }
+                                        console.log("[AppBuilder] 🛡️ Ghost workflow resurrected and locked for reuse!");
+                                    }
+                                }
+                            }
+                        }
+                    } catch (err) { console.warn("Pre-load check failed:", err); }
+                    
+                    await app.loadGraphData(workflowData, true, true, nativeFilePath);
+                    if (app.ui && typeof app.ui.setFilename === "function") app.ui.setFilename(cleanName);
+                    if (app.graph) app.graph.filename = filename;
+                    
+                    setTimeout(() => {
+                        try {
+                            const vueApp = document.querySelector('[data-v-app]')?.__vue_app__;
+                            if (vueApp) {
+                                const pinia = vueApp.config.globalProperties.$pinia;
+                                let wfStore = pinia.state.value?.workflow || pinia.state.value?.workflowStore;
+                                
+                                if (!wfStore) {
+                                    for (const key in pinia.state.value || {}) {
+                                        if (pinia.state.value[key]?.activeWorkflow !== undefined) {
+                                            wfStore = pinia.state.value[key];
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (wfStore && wfStore.activeWorkflow) {
+                                    const wf = wfStore.activeWorkflow;
+                                    
+                                    wf.name = cleanName;
+                                    wf.fullFilename = filename;
+                                    wf.directory = "workflows/app"
+                                    wf.path = "workflows/app/" + filename
+                                    
+                                    Object.defineProperty(wf, "isPersisted", { get() { return true; }, set(v) {}, configurable: true });
+                                    Object.defineProperty(wf, "isLoaded", { get() { return true; }, set(v) {}, configurable: true });
+                                    
+                                    wf.originalContent = JSON.stringify(workflowData);
+                                    wf._isModified = false;
+                                    
+                                    if (!wf.changeTracker) {
+                                        wf.changeTracker = {
+                                            reset: function(data) { wf._isModified = false; },
+                                            restore: function() {},
+                                            deactivate: function() {},
+                                            prepareForSave: function() {},
+                                            captureCanvasState: function() {},
+                                            get activeState() { return app.graph ? app.graph.serialize() : workflowData; },
+                                            get initialState() { return workflowData; }
+                                        };
+                                    }
+                                    console.log("%c[AppBuilder] 🚀 Production Pinia State Hijacked & Persisted!", "color: #00ff00; font-weight: bold;");
+                                }
+                            }
+                        } catch (err) {
+                            console.warn("[AppBuilder] Pinia hijack failed:", err);
+                        }
+                    }, 500); 
+                    
+                    setTimeout(() => {
+                        const firstBuilder = app.graph.findNodesByType("AppBuilder")[0] || app.graph.findNodesByType("AppBuilderAdv")[0];
+                        if (firstBuilder) {
+                            const btnAppView = firstBuilder.widgets?.find(w => w.is_appview_button);
+                            if (btnAppView && btnAppView.callback) btnAppView.callback();
+                        } else {
+                            alert(i18n.not_app);
+                        }
+                    }, 600); 
+                }
+            } catch (err) {
+                console.error("Auto load workflow failed:", err);
+            }
+        }
+    });
+    
+    if (!api._queuePromptPatched) {
+        api._queuePromptPatched = true;
+        const originalQueuePrompt = api.queuePrompt;
+        
+        api.queuePrompt = async function() {
+            try {
+                return await originalQueuePrompt.apply(this, arguments);
+            } catch (err) {
+                // 默认使用原有的宽泛错误
+                let detailedMessage = err.message || String(err);
+                
+                // 💡 核心：尝试从 err.response 提取后端的详细 JSON 报错
+                if (err.response) {
+                    try {
+                        const errorData = err.response.error;
+                        const nodeErrors = err.response.node_errors;
+                        let details = [];
+                        // 1. 获取全局错误类型描述 (例如: "Prompt outputs failed validation")
+                        if (errorData && errorData.message) details.push(errorData.message);
+                        // 2. 遍历后端返回的错误节点对象，提取具体的错误字段
+                        if (nodeErrors) {
+                            for (const [nodeId, nodeInfo] of Object.entries(nodeErrors)) {
+                                if (nodeInfo.errors && nodeInfo.errors.length > 0) {
+                                    nodeInfo.errors.forEach(e => {
+                                        // 尝试获取用户自定义的节点名称，如果没有则使用类型或 ID
+                                        const nodeDef = app.graph.getNodeById(nodeId);
+                                        const nodeTitle = nodeDef?.title || nodeInfo.class_type || `Node ${nodeId}`;
+                                        
+                                        // 拼接精准报错，例如：[KSampler]: Required input is missing (model)
+                                        details.push(`[${nodeTitle}]: ${e.message} (${e.details})`);
+                                    });
+                                }
+                            }
+                        }
+                        
+                        // 如果成功提取到，则替换 message
+                        if (details.length > 0) {
+                            detailedMessage = details.join('\n');
+                        }
+                    } catch (parseErr) {
+                        console.warn("Failed to parse ComfyUI detailed error:", parseErr);
+                    }
+                }
+                
+                // 广播给活跃的子页面
+                const nodes = [
+                    ...app.graph.findNodesByType("AppBuilderAdv"),
+                    ...app.graph.findNodesByType("AppBuilder")
+                ];
+                
+                nodes.forEach(node => {
+                    if (node.appWindow && !node.appWindow.closed) {
+                        node.appWindow.postMessage({
+                            type: 'pre_queue_error',
+                            message: detailedMessage
+                        }, '*');
+                    }
+                });
+                
+                throw err; // 👈 扔回给 ComfyApp 原生核心
+            }
+        };
+    }
 }
 
 const applyBypasser = (v, params, graph) => {
@@ -172,12 +427,159 @@ const setupUploaderWidget = (node, key, param, defaultVal, validKeys) => {
             fileInput.click();
         });
         
-        uploadBtn.associatedKey = key; // 🔥 绑定关联主键，用于后续的定位、清理和排序
+        uploadBtn.associatedKey = key;
         uploadBtn.serialize = false;
     }
     
     return comboWidget;
 };
+                
+function getActiveWorkflow() {
+    const vueApp = document.querySelector('[data-v-app]')?.__vue_app__;
+    const pinia = vueApp?.config.globalProperties.$pinia;
+    
+    if (!pinia) return null;
+    
+    for (const store of Object.values(pinia.state.value)) {
+        if (store.activeWorkflow) return store.activeWorkflow;
+    }
+    
+    return null;
+}
+
+const saveActiveWorkflow = async () => {
+    try {
+        const wf = getActiveWorkflow()
+        if (wf) {
+            const isAppWorkflow = wf.directory === "workflows/app";
+            if (isAppWorkflow) {
+                const serializedState = app.graph.serialize();
+                const cleanStateStr = JSON.stringify(app.graph.serialize());
+                const hasZeroNodes = !app.graph._nodes || app.graph._nodes.length === 0;
+                if (!serializedState || cleanStateStr === "null" || hasZeroNodes) {
+                    console.warn("[AppBuilder] 🛡️ Save Aborted!");
+                    return; // 强行拦截！
+                }
+                console.log(`[AppBuilder] Auto-save: "${wf.fullFilename}"`);
+                await wf.save();
+            }
+        }
+    } catch (e) {
+        console.warn("[AppBuilder] Auto-save failed:", e);
+    }
+}
+                
+const closeActiveWorkflow = async () => {
+    try {
+        const vueApp = document.querySelector('[data-v-app]')?.__vue_app__;
+        const pinia = vueApp?.config?.globalProperties?.$pinia;
+        if (pinia && pinia._s) {
+            let wfStoreInstance = null;
+            for (const [id, instance] of pinia._s.entries()) {
+                if (instance && instance.activeWorkflow !== undefined) {
+                    wfStoreInstance = instance;
+                    break;
+                }
+            }
+            if (wfStoreInstance) {
+                const openWorkflows = wfStoreInstance.openWorkflows || wfStoreInstance.workflows || [];
+                const activeWf = wfStoreInstance.activeWorkflow;
+                
+                if (openWorkflows.length > 1 && activeWf) {
+                    if (typeof wfStoreInstance.closeWorkflow === "function") {
+                        await wfStoreInstance.closeWorkflow(activeWf);
+                    }
+                }
+            }
+        }
+    } catch(err) { console.warn("AppView close sync failed:", err); }
+};
+                
+function openAppViewIframe(node) {
+    const htmlUrl = new URL('app_view.html', import.meta.url);
+    htmlUrl.searchParams.set('nodeId', node.id);
+    
+    const oldIframe = document.getElementById("appview-iframe");
+    if (oldIframe) oldIframe.remove();
+    
+    const iframe = document.createElement("iframe");
+    iframe.id = "appview-iframe";
+    
+    Object.assign(iframe.style, {
+        position: "fixed",
+        top: "0",
+        left: "0",
+        bottom: "0",
+        width: "100%",
+        height: "100dvh",
+        zIndex: "999999",
+        border: "none",
+        opacity: "0",           // 初始完全透明
+        transition: "opacity 0.3s ease", // 可选淡入效果
+        backgroundColor: localStorage.getItem('appview_theme') === 'light' ? '#fafafa' : '#000000',
+    });
+    
+    document.body.appendChild(iframe);
+    iframe.src = htmlUrl.href;
+    
+    iframe.onload = function() { iframe.style.opacity = "1"; };
+    setTimeout(() => { iframe.style.opacity = "1"; }, 10000);
+    return iframe;
+}
+
+function setupAppWindowBridge(context, api) {
+    // 事件配置列表：apiEvent 为监听的事件名，msgType 为发送的消息类型，payload 为可选的载荷转换函数
+    const eventConfigs = [
+        { apiEvent: "b_preview", msgType: "b_preview", payload: (e) => ({ blob: e.detail }) },
+        { apiEvent: "executed", msgType: "executed", payload: (e) => ({ detail: e.detail }) },
+        { apiEvent: "execution_start", msgType: "execution_start" },
+        { apiEvent: "status", msgType: "status", payload: (e) => ({ detail: e.detail }) },
+        { apiEvent: "execution_interrupted", msgType: "execution_interrupted" },
+        { apiEvent: "progress", msgType: "progress", payload: (e) => ({ detail: e.detail }) },
+        { apiEvent: "execution_error", msgType: "execution_error", payload: (e) => ({ detail: e.detail }) },
+        { apiEvent: "executing", msgType: "executing", payload: (e) => ({ detail: e.detail }) },
+        { apiEvent: "appbuilder_log", msgType: "appbuilder_log", payload: (e) => ({ detail: e.detail }) },
+    ];
+    
+    // 清除已绑定监听器的内部函数
+    const removeListeners = () => {
+        if (context._bridgeHandlers) {
+            context._bridgeHandlers.forEach(({ apiEvent, handler }) => {
+                api.removeEventListener(apiEvent, handler);
+            });
+            context._bridgeHandlers = null;
+        }
+    };
+    
+    // 1. 定义 registerAppWindow 方法
+    context.registerAppWindow = (appWin) => {
+        context.appWindow = appWin;
+        
+        // 清理上一次的监听器
+        removeListeners();
+        
+        // 批量创建并注册新的监听器
+        context._bridgeHandlers = eventConfigs.map(({ apiEvent, msgType, payload }) => {
+            const handler = (e) => {
+                if (context.appWindow && !context.appWindow.closed) {
+                    const extraData = payload ? payload(e) : {};
+                    context.appWindow.postMessage({ type: msgType, ...extraData }, '*');
+                }
+            };
+            api.addEventListener(apiEvent, handler);
+            return { apiEvent, handler };
+        });
+    };
+    
+    // 2. 包装 onRemoved 方法以确保销毁时清理监听器
+    const originalOnRemoved = context.onRemoved;
+    context.onRemoved = function (...args) {
+        removeListeners();
+        if (originalOnRemoved) {
+            originalOnRemoved.apply(this, args);
+        }
+    };
+}
 
 // 开启可视化配置浮层
 function openConfigOverlay(nodeId) {
@@ -224,83 +626,13 @@ function openConfigOverlay(nodeId) {
         delete window.closeConfigOverlay;
     };
 }
+                
+setupAPI();
 
 app.registerExtension({
     name: "AppBuilder.AppBuilderAdv",
-    
-    setup() {
-        // Expose 实例，保障 AppView 页面及配置浮层能重新抓回
-        window.comfyApp = app;
-        window.comfyApi = api;
-        
-        if (!api._queuePromptPatched) {
-            api._queuePromptPatched = true;
-            const originalQueuePrompt = api.queuePrompt;
-            
-            api.queuePrompt = async function() {
-                try {
-                    return await originalQueuePrompt.apply(this, arguments);
-                } catch (err) {
-                    // 默认使用原有的宽泛错误
-                    let detailedMessage = err.message || String(err);
-                    
-                    // 💡 核心：尝试从 err.response 提取后端的详细 JSON 报错
-                    if (err.response) {
-                        try {
-                            const errorData = err.response.error;
-                            const nodeErrors = err.response.node_errors;
-                            let details = [];
-                            
-                            // 1. 获取全局错误类型描述 (例如: "Prompt outputs failed validation")
-                            if (errorData && errorData.message) {
-                                details.push(errorData.message);
-                            }
-                            
-                            // 2. 遍历后端返回的错误节点对象，提取具体的错误字段
-                            if (nodeErrors) {
-                                for (const [nodeId, nodeInfo] of Object.entries(nodeErrors)) {
-                                    if (nodeInfo.errors && nodeInfo.errors.length > 0) {
-                                        nodeInfo.errors.forEach(e => {
-                                            // 尝试获取用户自定义的节点名称，如果没有则使用类型或 ID
-                                            const nodeDef = app.graph.getNodeById(nodeId);
-                                            const nodeTitle = nodeDef?.title || nodeInfo.class_type || `Node ${nodeId}`;
-                                            
-                                            // 拼接精准报错，例如：[KSampler]: Required input is missing (model)
-                                            details.push(`[${nodeTitle}]: ${e.message} (${e.details})`);
-                                        });
-                                    }
-                                }
-                            }
-                            
-                            // 如果成功提取到，则替换 message
-                            if (details.length > 0) {
-                                detailedMessage = details.join('\n');
-                            }
-                        } catch (parseErr) {
-                            console.warn("Failed to parse ComfyUI detailed error:", parseErr);
-                        }
-                    }
-                    
-                    // 广播给活跃的子页面
-                    const nodes = [
-                        ...app.graph.findNodesByType("AppBuilderAdv"),
-                        ...app.graph.findNodesByType("AppBuilder")
-                    ];
-                    
-                    nodes.forEach(node => {
-                        if (node.appWindow && !node.appWindow.closed) {
-                            node.appWindow.postMessage({
-                                type: 'pre_queue_error',
-                                message: detailedMessage
-                            }, '*');
-                        }
-                    });
-                    
-                    throw err; // 👈 扔回给 ComfyApp 原生核心
-                }
-            };
-        }
-        
+
+    async setup() {
         const originalGraphToPrompt = app.graphToPrompt;
         
         app.graphToPrompt = async function () {
@@ -417,160 +749,37 @@ app.registerExtension({
                     this.buildDynamicUI(savedJson, true, info.widgets_values); 
                 }
                 
+                const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
+                if (autoOpenWidget && typeof autoOpenWidget.value !== "boolean") autoOpenWidget.value = false;
+                const showTitleWidget = this.widgets?.find(w => w.name === "Short Title");
+                if (showTitleWidget && typeof showTitleWidget.value !== "boolean") showTitleWidget.value = true;
+                
                 setTimeout(() => {
                     const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
                     if (autoOpenWidget && autoOpenWidget.value === true) {
-                        const btnAppView = this.widgets?.find(w => w.name === "📱 Open in AppView" || w.value === "btn_app_view");
-                        if (btnAppView && btnAppView.callback) {
-                            btnAppView.callback(); // 自动模拟点击“Open in AppView”，瞬间弹出窗口！
+                        const btnAppView = this.widgets?.find(w => w.is_appview_button);
+                        if (btnAppView && btnAppView.callback && !isMobile()) {
+                            btnAppView.callback();
                         }
                     }
-                }, 500); // 延迟 600ms 避开加载期，确保安全稳定弹出
+                }, 500);
             };
 
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 
-                this.size = [300, 120]; // 👈 参数区现在极其紧凑，不再冗长
-
-                // 注册跨窗口和刷新事件
-                this.registerAppWindow = (appWin) => {
-                    this.appWindow = appWin;
-                    
-                    const onPreview = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'b_preview', blob: e.detail }, '*');
-                        }
-                    };
-                    const onExecuted = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'executed', detail: e.detail }, '*');
-                        }
-                    };
-                    const onStart = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'execution_start' }, '*');
-                        }
-                    };
-                    const onStatus = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'status', detail: e.detail }, '*');
-                        }
-                    };
-                    const onInterrupted = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'execution_interrupted' }, '*');
-                        }
-                    };
-                    const onProgress = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'progress', detail: e.detail }, '*');
-                        }
-                    };
-                    const onExecutionError = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'execution_error', detail: e.detail }, '*');
-                        }
-                    };
-                    const onExecuting = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'executing', detail: e.detail }, '*');
-                        }
-                    };
-                    const onLog = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'log', detail: e.detail }, '*');
-                        }
-                    };
-
-                    if (this._onPreview) {
-                        api.removeEventListener("b_preview", this._onPreview);
-                        api.removeEventListener("executed", this._onExecuted);
-                        api.removeEventListener("execution_start", this._onStart);
-                        api.removeEventListener("status", this._onStatus);
-                        api.removeEventListener("execution_interrupted", this._onInterrupted);
-                        api.removeEventListener("progress", this._onProgress);
-                        api.removeEventListener("execution_error", this._onExecutionError);
-                        api.removeEventListener("executing", this._onExecuting);
-                    }
-
-                    this._onPreview = onPreview;
-                    this._onExecuted = onExecuted;
-                    this._onStart = onStart;
-                    this._onStatus = onStatus;
-                    this._onInterrupted = onInterrupted;
-                    this._onProgress = onProgress;
-                    this._onExecutionError = onExecutionError;
-                    this._onExecuting = onExecuting;
-
-                    api.addEventListener("b_preview", onPreview);
-                    api.addEventListener("executed", onExecuted);
-                    api.addEventListener("execution_start", onStart);
-                    api.addEventListener("status", onStatus);
-                    api.addEventListener("execution_interrupted", onInterrupted);
-                    api.addEventListener("progress", onProgress);
-                    api.addEventListener("execution_error", onExecutionError);
-                    api.addEventListener("executing", onExecuting);
-                };
-
-                const onRemoved = this.onRemoved;
-                this.onRemoved = () => {
-                    if (this._onPreview) {
-                        api.removeEventListener("b_preview", this._onPreview);
-                        api.removeEventListener("executed", this._onExecuted);
-                        api.removeEventListener("execution_start", this._onStart);
-                        api.removeEventListener("status", this._onStatus);
-                        api.removeEventListener("execution_interrupted", this._onInterrupted);
-                        api.removeEventListener("progress", this._onProgress);
-                        api.removeEventListener("execution_error", this._onExecutionError);
-                        api.removeEventListener("executing", this._onExecuting);
-                    }
-                    if (onRemoved) onRemoved.apply(this, arguments);
-                };
+                this.size = [300, 120];
+                setupAppWindowBridge(this, api);
 
                 const btnWidget = this.addWidget("button", "📱 Open in AppView", "btn_app_view", () => {
-                    const htmlUrl = new URL('app_view.html', import.meta.url);
-                    htmlUrl.searchParams.set('nodeId', this.id); 
-                    
-                    let oldIframe = document.getElementById("appview-iframe");
-                    if (oldIframe) {
-                        oldIframe.remove(); 
-                    }
-                    
-                    // 每次都凭空捏造一个绝对干净的新容器
-                    let iframe = document.createElement("iframe");
-                    iframe.id = "appview-iframe";
-                    iframe.style.position = "fixed";
-                    iframe.style.top = "0";
-                    iframe.style.left = "0";
-                    iframe.style.bottom = "0";
-                    iframe.style.width = "100%";
-                    iframe.style.height = "100dvh";
-                    iframe.style.zIndex = "999999";
-                    iframe.style.border = "none";
-                    
-                    // 👇【绝对核心 2】：在加载网页前，先把容器底色刷成纯黑！杜绝加载网络时的白屏闪烁
-                    const savedTheme = localStorage.getItem('appview_theme') || 'dark';
-                    iframe.style.backgroundColor = savedTheme === 'light' ? '#fafafa' : '#000000';
-                    
-                    document.body.appendChild(iframe);
-                    iframe.src = htmlUrl.href;
-                    
-                    this.registerAppWindow(iframe.contentWindow);
-
-                    /* 💻 电脑端：保持原样，打开独立新标签页
-                    const appWindow = window.open(htmlUrl.href, '_blank');
-                    if (!appWindow) {
-                        alert("Please allow pop-ups for this site to open the AppView.");
-                        return;
-                    }
-                    this.registerAppWindow(appWindow);*/
+                    openAppViewIframe(this)
                 });
                 
                 // 👇 【核心修复】：利用 Object.defineProperty 绕过只读 Getter 限制，强行重写绘制高度
                 Object.defineProperty(btnWidget, 'height', { get() { return 40; }, configurable: true });
                 btnWidget.computeSize = function(width) { return [width, 40]; };
+                btnWidget.is_appview_button = true;
                 
                 this.addWidget("button", "⚙️ Configure Panel", "btn_configure", () => {
                     openConfigOverlay(this.id);
@@ -592,26 +801,13 @@ app.registerExtension({
                         });
                     }
                 }, {});
-                
-                this.hideWidget = function(widget) {
-                    if (!widget._origType) widget._origType = widget.type;
-                    widget.hidden = true;
-                    widget.type = "converted-widget";
-                    widget.computeSize = () => [0, -4];
-                }
-                
-                this.showWidget = function(widget) {
-                    widget.hidden = false;
-                    widget.computeSize = undefined;
-                    if (widget._origType) widget.type = widget._origType;
-                }
 
                 // 强制将画布上的无用配置字段（config_json等）永久隐藏
                 setTimeout(() => {
                     const jsonW = this.widgets.find(w => w.name === "config_json");
-                    if (jsonW) this.hideWidget(jsonW);
+                    if (jsonW) hideWidget(jsonW);
                     const prevW = this.widgets.find(w => w.name === "live_preview");
-                    if (prevW) this.hideWidget(prevW);
+                    if (prevW) hideWidget(prevW);
                     this.computeSize();
                     this.setDirtyCanvas(true, true);
                 }, 50);
@@ -812,9 +1008,9 @@ app.registerExtension({
 
                 setTimeout(() => {
                     const jsonW = this.widgets.find(w => w.name === "config_json");
-                    if (jsonW) this.hideWidget(jsonW);
+                    if (jsonW) hideWidget(jsonW);
                     const prevW = this.widgets.find(w => w.name === "live_preview");
-                    if (prevW) this.hideWidget(prevW);
+                    if (prevW) hideWidget(prevW);
                     if (!this.isConfigured) this.buildDynamicUI(null, true);
                 }, 100);
                 return r;
@@ -936,9 +1132,6 @@ app.registerExtension({
     name: "AppBuilder.AppBuilder",
     
     setup() {
-        window.comfyApp = app;
-        window.comfyApi = api;
-        
         const originalGraphToPrompt = app.graphToPrompt;
         app.graphToPrompt = async function () {
             const res = await originalGraphToPrompt.apply(this, arguments);
@@ -1051,11 +1244,16 @@ app.registerExtension({
             nodeType.prototype.onConfigure = function (info) {
                 if (onConfigure) onConfigure.apply(this, arguments);
                 
+                const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
+                if (autoOpenWidget && typeof autoOpenWidget.value !== "boolean") autoOpenWidget.value = false;
+                const showTitleWidget = this.widgets?.find(w => w.name === "Short Title");
+                if (showTitleWidget && typeof showTitleWidget.value !== "boolean") showTitleWidget.value = true;
+                
                 setTimeout(() => {
                     const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
                     if (autoOpenWidget && autoOpenWidget.value === true) {
-                        const btnAppView = this.widgets?.find(w => w.name === "📱 Open in AppView" || w.value === "btn_app_view");
-                        if (btnAppView && btnAppView.callback) {
+                        const btnAppView = this.widgets?.find(w => w.is_appview_button);
+                        if (btnAppView && btnAppView.callback && !isMobile()) {
                             btnAppView.callback(); // 自动模拟点击“Open in AppView”，瞬间弹出窗口！
                         }
                     }
@@ -1066,158 +1264,24 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 this.size = [300, 100];
-                
-                // 🔥 找回递增序号：初始化首个递增 Bypasser 接口
-                this.addInput("bypasser_1", "BYPASSER", { shape: 7 }); 
-                
-                this.hideWidget = (widget) => {
-                    widget.hidden = true;
-                    widget.type = "converted-widget";
-                    widget.computeSize = () => [0, -4];
-                };
-
-                this.registerAppWindow = (appWin) => {
-                    this.appWindow = appWin;
-                    
-                    const onPreview = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'b_preview', blob: e.detail }, '*');
-                        }
-                    };
-                    const onExecuted = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'executed', detail: e.detail }, '*');
-                        }
-                    };
-                    const onStart = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'execution_start' }, '*');
-                        }
-                    };
-                    const onStatus = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'status', detail: e.detail }, '*');
-                        }
-                    };
-                    const onInterrupted = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'execution_interrupted' }, '*');
-                        }
-                    };
-                    const onProgress = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'progress', detail: e.detail }, '*');
-                        }
-                    };
-                    const onExecutionError = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'execution_error', detail: e.detail }, '*');
-                        }
-                    };
-                    const onExecuting = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'executing', detail: e.detail }, '*');
-                        }
-                    };
-                    const onLog = (e) => {
-                        if (this.appWindow && !this.appWindow.closed) {
-                            this.appWindow.postMessage({ type: 'log', detail: e.detail }, '*');
-                        }
-                    };
-                    
-                    if (this._onPreview) {
-                        api.removeEventListener("b_preview", this._onPreview);
-                        api.removeEventListener("executed", this._onExecuted);
-                        api.removeEventListener("execution_start", this._onStart);
-                        api.removeEventListener("status", this._onStatus);
-                        api.removeEventListener("execution_interrupted", this._onInterrupted);
-                        api.removeEventListener("progress", this._onProgress);
-                        api.removeEventListener("execution_error", this._onExecutionError);
-                        api.removeEventListener("executing", this._onExecuting);
-                    }
-                    
-                    this._onPreview = onPreview;
-                    this._onExecuted = onExecuted;
-                    this._onStart = onStart;
-                    this._onStatus = onStatus;
-                    this._onInterrupted = onInterrupted;
-                    this._onProgress = onProgress;
-                    this._onExecutionError = onExecutionError;
-                    this._onExecuting = onExecuting;
-                    
-                    api.addEventListener("b_preview", onPreview);
-                    api.addEventListener("executed", onExecuted);
-                    api.addEventListener("execution_start", onStart);
-                    api.addEventListener("status", onStatus);
-                    api.addEventListener("execution_interrupted", onInterrupted);
-                    api.addEventListener("progress", onProgress);
-                    api.addEventListener("execution_error", onExecutionError);
-                    api.addEventListener("executing", onExecuting);
-                };
-                
-                const onRemoved = this.onRemoved;
-                this.onRemoved = () => {
-                    if (this._onPreview) {
-                        api.removeEventListener("b_preview", this._onPreview);
-                        api.removeEventListener("executed", this._onExecuted);
-                        api.removeEventListener("execution_start", this._onStart);
-                        api.removeEventListener("status", this._onStatus);
-                        api.removeEventListener("execution_interrupted", this._onInterrupted);
-                        api.removeEventListener("progress", this._onProgress);
-                        api.removeEventListener("execution_error", this._onExecutionError);
-                        api.removeEventListener("executing", this._onExecuting);
-                    }
-                    if (onRemoved) onRemoved.apply(this, arguments);
-                };
-                
+                this.addInput("bypasser_1", "BYPASSER", { shape: 7 });
+                setupAppWindowBridge(this, api);
                 setTimeout(() => {
                     const jsonW = this.widgets?.find(w => w.name === "config_json");
                     if (jsonW) {
-                        this.hideWidget(jsonW);
+                        hideWidget(jsonW);
                         this.computeSize();
                         this.setDirtyCanvas(true, true);
                     }
                 }, 50);
 
                 const btnWidget = this.addWidget("button", "📱 Open in AppView", "btn_app_view", () => {
-                    this.syncAllConnections(); // 打开前强制同步一次
-
-                    const htmlUrl = new URL('app_view.html', import.meta.url);
-                    htmlUrl.searchParams.set('nodeId', this.id); 
-                    
-                    let oldIframe = document.getElementById("appview-iframe");
-                    if (oldIframe) {
-                        oldIframe.remove(); 
-                    }
-                    
-                    let iframe = document.createElement("iframe");
-                    iframe.id = "appview-iframe";
-                    iframe.style.position = "fixed";
-                    iframe.style.top = "0";
-                    iframe.style.left = "0";
-                    iframe.style.bottom = "0";
-                    iframe.style.width = "100%";
-                    iframe.style.height = "100dvh";
-                    iframe.style.zIndex = "999999";
-                    iframe.style.border = "none";
-                    
-                    const savedTheme = localStorage.getItem('appview_theme') || 'dark';
-                    iframe.style.backgroundColor = savedTheme === 'light' ? '#fafafa' : '#000000';
-                    
-                    document.body.appendChild(iframe);
-                    iframe.src = htmlUrl.href;
-                    
-                    this.registerAppWindow(iframe.contentWindow);
-
-                    /*const appWindow = window.open(htmlUrl.href, '_blank');
-                    if (!appWindow) {
-                        alert("Please allow pop-ups for this site to open the AppView.");
-                        return;
-                    }
-                    this.registerAppWindow(appWindow);*/
+                    this.syncAllConnections();
+                    openAppViewIframe(this);
                 });
                 Object.defineProperty(btnWidget, 'height', { get() { return 40; }, configurable: true });
                 btnWidget.computeSize = function(width) { return [width, 40]; };
+                btnWidget.is_appview_button = true;
                 
                 this.addWidget("toggle", "Auto Launch", false, (v) => {
                     if (v) {
@@ -1523,8 +1587,8 @@ app.registerExtension({
                     // 保护过滤名单：加入了对活动中上传按钮的保护
                     const isProtected = [
                         "config_json", "control_after_generate", "btn_app_view", 
-                        "converted-widget", "hidden_parameter", "Auto Launch", "Short Title", "📱 Open in AppView"
-                    ].includes(w.name) || w.value === "btn_app_view" || w.type === "hidden_parameter" || 
+                        "converted-widget", "hidden_parameter", "Auto Launch", "Short Title"
+                    ].includes(w.name) || w.type === "hidden_parameter" || w.is_appview_button || 
                     (w.value === "Upload" && w.associatedKey && validKeys.includes(w.associatedKey)); // 🔥 保护活跃的上传按钮
                     
                     if (!isProtected && !validKeys.includes(w.name)) {
@@ -1645,11 +1709,10 @@ app.registerExtension({
                 // 🔥 核心修改：对 widgets 数组重新排序，强制视觉顺序与连线顺序100%对齐！
                 // ==========================================
                 const staticWidgets = this.widgets.filter(w => 
-                    w.name === "config_json" || 
-                    w.name === "converted-widget" || 
-                    w.type === "hidden_parameter" || 
-                    w.name === "📱 Open in AppView" || 
-                    w.value === "btn_app_view" ||
+                    w.name === "config_json" ||
+                    w.name === "converted-widget" ||
+                    w.type === "hidden_parameter" ||
+                    w.is_appview_button ||
                     w.name === "Auto Launch" ||       // 🔥 强制留在最顶部
                     w.name === "Short Title"
                 );

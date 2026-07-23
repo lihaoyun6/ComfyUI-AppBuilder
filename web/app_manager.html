@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>App Manager</title>
+    <style>
+        :root {
+            /* 默认深色主题 */
+            --bg: #000000;
+            --bg-color: #000000;
+            --card-bg: #1C1C1E;
+            --border-color: #343434;
+            --text-color: #e0e0e0;
+            --text-muted: #666;
+            --accent-color: #ff9800;
+            --search-bg: #121212;
+            --search-border: #333;
+            --inset-shadow: rgba(0,0,0,0.5);
+        }
+
+        :root.light-theme {
+            /* 浅色主题 */
+            --bg: #fafafa;
+            --bg-color: #fafafa;
+            --card-bg: #ffffff;
+            --border-color: #e0e0e0;
+            --text-color: #1a1a1a;
+            --text-muted: #888;
+            --accent-color: #ff9800;
+            --search-bg: #f0f0f0;
+            --search-border: #ccc;
+            --inset-shadow: rgba(0,0,0,0.05);
+        }
+
+        body {
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* ==========================================
+           📌 头部区域吸顶 (Sticky Header)
+           ========================================== */
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--bg-color); /* 覆盖背景，阻挡滚动文字 */
+            padding-top: 20px;            /* 补偿 body 边距 */
+            margin-top: -20px;            /* 贴合顶部边界 */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-bottom: 14px;
+            margin-bottom: 16px;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-color); /* 优雅分割线 */
+        }
+        .title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            letter-spacing: 0.5px;
+        }
+        .search-bar {
+            background: var(--search-bg);
+            border: 1px solid var(--search-border);
+            border-radius: 10px;
+            padding: 10px 15px; /* 缩减垂直边距 */
+            color: var(--text-color);
+            font-size: 0.95rem;
+            outline: none;
+            box-shadow: inset 0 2px 4px var(--inset-shadow);
+        }
+        .search-bar:focus {
+            border-color: var(--accent-color);
+        }
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        select {
+            background: var(--search-bg);
+            border: 1px solid var(--search-border);
+            border-radius: 8px;
+            color: var(--text-color);
+            padding: 5px 10px;
+            outline: none;
+            font-size: 0.85rem;
+        }
+
+        /* ==========================================
+           📏 更矮、更精致的紧凑型列表 Item
+           ========================================== */
+        .list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px; /* 紧凑间距 */
+        }
+        .item {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 16px; /* 🔥 深度缩减内边距：高度更矮更干练！ */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .item:active {
+            background: var(--search-bg);
+            transform: scale(0.98);
+        }
+        .item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .item-name {
+            font-size: 1.05rem; /* 稍微缩小字体 */
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        .item-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .item-size {
+            font-size: 0.8rem;
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+        /* 右上角关闭按钮样式 */
+        .close-manager-btn {
+            position: absolute;
+            top: 10px;
+            right: 0px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 2rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 5px;
+            transition: color 0.1s;
+        }
+        .close-manager-btn:active {
+            color: var(--accent-color);
+        }
+        
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100dvh;
+            background-color: var(--bg);
+            z-index: 999999;
+            
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            
+            display: none;
+            pointer-events: auto;
+            user-select: none;
+            -webkit-user-select: none;
+            isolation: isolate;
+        }
+        .splash-content { text-align: center; }
+        .splash-icon { font-size: 64px; display: block; margin-bottom: 16px; }
+        .splash-title {
+            font-size: 24px; font-weight: bold; color: var(--text); letter-spacing: 1.5px;
+            font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui,sans-serif;
+        }
+    </style>
+    <script>
+        function syncThemeWithAppView() {
+            const savedTheme = localStorage.getItem('appview_theme') || 'system'; // 默认为 system
+            let activeTheme = savedTheme;
+            
+            // 如果是跟随系统，在此瞬间换算
+            if (savedTheme === 'system') {
+                activeTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            
+            if (activeTheme === 'light') {
+                document.documentElement.classList.add("light-theme");
+            } else {
+                document.documentElement.classList.remove("light-theme");
+            }
+        }
+        
+        // 1. 初始化
+        syncThemeWithAppView();
+        
+        // 2. 监听跨 Tab 属性变动
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'appview_theme') syncThemeWithAppView();
+        });
+        
+        // 3. 🔥 核心：大厅也监听系统变动，实现全生态链无缝换色！
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            const savedTheme = localStorage.getItem('appview_theme') || 'system';
+            if (savedTheme === 'system') syncThemeWithAppView();
+        });
+    </script>
+</head>
+<body>
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <span class="splash-icon">🎛️</span>
+            <div class="splash-title">ComfyUI AppBuilder</div>
+        </div>
+    </div>
+    
+    <div class="header">
+        <button id="close-manager" class="close-manager-btn">&times;</button>
+        <div class="title" data-i18n="title-apps">🗂️ My Apps</div>
+        <input type="text" id="search" class="search-bar" placeholder-i18n="search_apps" placeholder="Search your apps...">
+        <div class="toolbar">
+            <span id="count">0 apps available</span>
+            <select id="sort">
+                <option data-i18n="date_desc" value="date_desc">Newest First</option>
+                <option data-i18n="date_asc" value="date_asc">Oldest First</option>
+                <option data-i18n="name_asc" value="name_asc">Name A-Z</option>
+                <option data-i18n="name_desc" value="name_desc">Name Z-A</option>
+            </select>
+        </div>
+    </div>
+    <div class="list-container" id="list"></div>
+    <script type="text/javascript" src="./i18n.js"></script>
+    <script>
+        let allWorkflows = [];
+        
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadI18n();
+            await loadList();
+        });
+        
+        async function loadList() {
+            try {
+                const res = await fetch('/appbuilder/workflows');
+                if (res.ok) {
+                    allWorkflows = await res.json();
+                    renderList();
+                }
+            } catch(e) { console.error("Load list failed:", e); }
+        }
+
+        function renderList() {
+            const searchVal = document.getElementById("search").value.toLowerCase();
+            const sortBy = document.getElementById("sort").value;
+            const container = document.getElementById("list");
+            
+            let filtered = allWorkflows.filter(w => w.name.toLowerCase().includes(searchVal));
+            
+            filtered.sort((a, b) => {
+                if (sortBy === "date_desc") return b.mtime - a.mtime;
+                if (sortBy === "date_asc") return a.mtime - b.mtime;
+                if (sortBy === "name_asc") return a.name.localeCompare(b.name);
+                if (sortBy === "name_desc") return b.name.localeCompare(a.name);
+            });
+
+            document.getElementById("count").innerText = t('available_apps', '{0} apps available', filtered.length);
+            container.innerHTML = "";
+            
+            filtered.forEach(item => {
+                const el = document.createElement("div");
+                el.className = "item";
+                
+                const formattedDate = new Date(item.mtime * 1000).toLocaleString();
+                const sizeKB = (item.size / 1024).toFixed(1) + " KB";
+                const cleanName = item.name.replace(".json", "");
+
+                el.innerHTML = `
+                    <div class="item-info">
+                        <span class="item-name">${cleanName}</span>
+                        <span class="item-date">${formattedDate}</span>
+                    </div>
+                    <span class="item-size">${sizeKB}</span>
+                `;
+                el.onclick = () => {
+                    window.parent.postMessage({ type: "load_workflow", filename: item.name }, "*");
+                    const splash = document.getElementById('splash-screen');
+                    
+                    splash.style.display = "flex";
+                    setTimeout(() => { splash.style.display = "none"; }, 2000);
+                };
+                container.appendChild(el);
+            });
+        }
+
+        document.getElementById("search").oninput = renderList;
+        document.getElementById("sort").onchange = renderList;
+        
+        document.getElementById("close-manager").onclick = () => {
+            window.parent.postMessage({ type: "close_app_manager" }, "*");
+        };
+    </script>
+</body>
+</html>
