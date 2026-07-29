@@ -1,5 +1,5 @@
 # ComfyUI-AppBuilder 
-Convert any workflow into an easy-to-use WebApp interface without enabling Node2.0  
+Turn your workflow into an easy-to-use web application without enabling Node2.0  
 **[[📃中文版](./README_zh.md)]** 
 
 ## Preview

@@ -92,7 +92,7 @@
   "label_cancel": "取消",
   "label_save": "保存",
   "label_editor": "编辑文本",
-  "label_editing": "📝 正在编辑: {0}",
+  "label_editing": "📝 正在编辑: [{0}]",
   "loading_ui": "正在加载...",
   "console_title": "🖥 运行日志",
   "lastSeed_desc": "恢复上一个随机种",
@@ -114,5 +114,8 @@
   "name_asc": "名称正序",
   "name_desc": "名称倒序",
   "not_app": "进入 App 模式失败!\n请先使用 AppBuilder 配置此工作流.",
-  "save_confirm": "是否保存修改?"
+  "save_confirm": "是否保存修改?",
+  "btn_add_lora": "+ 添加LoRA",
+  "toggle_all": "总开关",
+  "remove": "移除"
 }

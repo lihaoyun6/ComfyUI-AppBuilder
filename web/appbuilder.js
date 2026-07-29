@@ -11,7 +11,6 @@ let baseI18n = {
 async function loadI18n() {
     const comfyLang = app.ui.settings.getSettingValue("Comfy.Locale");
     const baseUrl = new URL("./i18n/", import.meta.url).href;
-    
     if (comfyLang !== "en") {
         try {
             const responseLang = await fetch(`${baseUrl}${comfyLang}.json`);
@@ -19,10 +18,7 @@ async function loadI18n() {
                 const langData = await responseLang.json();
                 i18n = { ...baseI18n, ...langData };
             } else { i18n = baseI18n; }
-        } catch (e) {
-            console.log(e);
-            i18n = baseI18n;
-        }
+        } catch (e) { console.log(e); i18n = baseI18n; }
     } else { i18n = baseI18n; }
 }
 
@@ -30,9 +26,8 @@ const findAllNodes = (nodes, type) => {
     let found = [];
     for (const node of nodes) {
         if (!type || node.type === type) found.push(node);
-        if (node.subgraph && node.subgraph._nodes) {
-            found.push(...findAllNodes(node.subgraph._nodes, type));
-        } else if (typeof node.getInnerNodes === 'function') {
+        if (node.subgraph && node.subgraph._nodes) found.push(...findAllNodes(node.subgraph._nodes, type));
+        else if (typeof node.getInnerNodes === 'function') {
             try {
                 const inner = node.getInnerNodes();
                 if (inner) found.push(...findAllNodes(inner, type));
@@ -42,21 +37,26 @@ const findAllNodes = (nodes, type) => {
     return found;
 };
 
+function isNodeV2() {
+    return app.ui.settings.getSettingValue("Comfy.VueNodes.Enabled");
+}
+
 function isMobile() {
     const ua = navigator.userAgent;
-    // 常规手机
     if (/Android|iPhone|iPod/i.test(ua)) return true;
-    // iPadOS 13+ 会伪装成 Mac，但有触摸屏
     if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
     return false;
 }
 
 function hideWidget(widget) {
     if (!widget) return;
-    
-    widget.hidden = true;
-    widget.type = "converted-widget";
-    widget.computeSize = () => [0, -4];
+    if (isNodeV2()) {
+        widget.disabled = true;
+    } else {
+        widget.hidden = true;
+        widget.type = "converted-widget";
+        widget.computeSize = () => [0, -4];
+    }
 }
 
 async function setupAPI() {
@@ -64,22 +64,26 @@ async function setupAPI() {
     window.comfyApp = app;
     window.comfyApi = api;
     
-    if (isMobile()) {
-        let wfIframe = document.createElement("iframe");
-        wfIframe.id = "app-manager-iframe";
-        
-        // 样式设为 fixed 绝对固定，铺满视口，层级为 30（大厅层）
-        wfIframe.style.cssText = `
-            position: fixed; top: 0; left: 0;
-            width: 100%; height: 100dvh; z-index: 999998; border: none;
-            pointer-events: auto; background: #121212;
-        `;
-        
-        const htmlUrl = new URL('app_manager.html', import.meta.url);
-        wfIframe.src = htmlUrl.href;
-        
-        document.body.appendChild(wfIframe); // 物理直接塞进最顶层 body 下！
+    // 🔥 【核心修改 1】：轮询等待 ComfyUI 完全渲染画布后，再注入大厅
+    function tryInjectManager() {
+        if (isMobile()) {
+            if (document.querySelector(".comfy-menu") && app.graph) {
+                let wfIframe = document.createElement("iframe");
+                wfIframe.id = "app-manager-iframe";
+                wfIframe.style.cssText = `
+                    position: fixed; top: 0; left: 0;
+                    width: 100%; height: 100dvh; z-index: 999998; border: none;
+                    pointer-events: auto; background: #121212;
+                `;
+                const htmlUrl = new URL('app_manager.html', import.meta.url);
+                wfIframe.src = htmlUrl.href;
+                document.body.appendChild(wfIframe);
+            } else {
+                setTimeout(tryInjectManager, 500);
+            }
+        }
     }
+    tryInjectManager();
     
     window.addEventListener("message", async (e) => {
         if (e.data && e.data.type === "close_appview") {
@@ -103,13 +107,9 @@ async function setupAPI() {
                 const response = await fetch(`/appbuilder/workflows/get?file=${encodeURIComponent(filename)}`);
                 if (response.ok) {
                     const workflowData = await response.json();
-                    
                     const nativeFilePath = "app/" + filename;
                     const cleanName = filename.replace(/\.json$/i, "");
                     
-                    // ==========================================
-                    // 🔥 核心修改 2：加载前“预防性重筑”（强行重写 isLoaded 为 false，强制重用！）
-                    // ==========================================
                     try {
                         const vueApp = document.querySelector('[data-v-app]')?.__vue_app__;
                         const pinia = vueApp?.config?.globalProperties?.$pinia;
@@ -118,30 +118,17 @@ async function setupAPI() {
                                 if (store && store.workflows) {
                                     const wfs = Array.isArray(store.workflows) ? store.workflows : Object.values(store.workflows);
                                     const ghostWf = wfs.find(w => w && (w.filename === cleanName && w.directory === "workflows/app"));
-                                    
                                     if (ghostWf) {
                                         ghostWf.originalContent = JSON.stringify(workflowData);
-                                        
-                                        // 🌟 物理重写 isLoaded 属性为 false！
-                                        // 这会强行骗过官方的 `!isLoaded` 拦截，迫使其重用当前标签页，绝不产生 (3) 等副本！
-                                        Object.defineProperty(ghostWf, "isLoaded", {
-                                            get() { return false; },
-                                            set(v) {},
-                                            configurable: true
-                                        });
-                                        
+                                        Object.defineProperty(ghostWf, "isLoaded", { get() { return false; }, set(v) {}, configurable: true });
                                         if (!ghostWf.changeTracker) {
                                             ghostWf.changeTracker = {
                                                 reset: function(data) { ghostWf._isModified = false; }, 
-                                                restore: function() {},
-                                                deactivate: function() {},
-                                                prepareForSave: function() {},
-                                                captureCanvasState: function() {},
+                                                restore: function() {}, deactivate: function() {}, prepareForSave: function() {}, captureCanvasState: function() {},
                                                 get activeState() { return app.graph ? app.graph.serialize() : workflowData; },
                                                 get initialState() { return workflowData; }
                                             };
                                         }
-                                        console.log("[AppBuilder] 🛡️ Ghost workflow resurrected and locked for reuse!");
                                     }
                                 }
                             }
@@ -158,125 +145,84 @@ async function setupAPI() {
                             if (vueApp) {
                                 const pinia = vueApp.config.globalProperties.$pinia;
                                 let wfStore = pinia.state.value?.workflow || pinia.state.value?.workflowStore;
-                                
                                 if (!wfStore) {
                                     for (const key in pinia.state.value || {}) {
                                         if (pinia.state.value[key]?.activeWorkflow !== undefined) {
-                                            wfStore = pinia.state.value[key];
-                                            break;
+                                            wfStore = pinia.state.value[key]; break;
                                         }
                                     }
                                 }
-                                
                                 if (wfStore && wfStore.activeWorkflow) {
                                     const wf = wfStore.activeWorkflow;
-                                    
-                                    wf.name = cleanName;
-                                    wf.fullFilename = filename;
-                                    wf.directory = "workflows/app"
-                                    wf.path = "workflows/app/" + filename
-                                    
+                                    wf.name = cleanName; wf.fullFilename = filename; wf.directory = "workflows/app"; wf.path = "workflows/app/" + filename;
                                     Object.defineProperty(wf, "isPersisted", { get() { return true; }, set(v) {}, configurable: true });
                                     Object.defineProperty(wf, "isLoaded", { get() { return true; }, set(v) {}, configurable: true });
-                                    
-                                    wf.originalContent = JSON.stringify(workflowData);
-                                    wf._isModified = false;
-                                    
+                                    wf.originalContent = JSON.stringify(workflowData); wf._isModified = false;
                                     if (!wf.changeTracker) {
                                         wf.changeTracker = {
-                                            reset: function(data) { wf._isModified = false; },
-                                            restore: function() {},
-                                            deactivate: function() {},
-                                            prepareForSave: function() {},
-                                            captureCanvasState: function() {},
-                                            get activeState() { return app.graph ? app.graph.serialize() : workflowData; },
-                                            get initialState() { return workflowData; }
+                                            reset: function(data) { wf._isModified = false; }, restore: function() {}, deactivate: function() {}, prepareForSave: function() {}, captureCanvasState: function() {},
+                                            get activeState() { return app.graph ? app.graph.serialize() : workflowData; }, get initialState() { return workflowData; }
                                         };
                                     }
-                                    console.log("%c[AppBuilder] 🚀 Production Pinia State Hijacked & Persisted!", "color: #00ff00; font-weight: bold;");
                                 }
                             }
-                        } catch (err) {
-                            console.warn("[AppBuilder] Pinia hijack failed:", err);
-                        }
+                        } catch (err) {}
                     }, 500); 
                     
+                    // 🔥 【核心修改 2】：完成后主动消除弹窗，如果遇到非 App 流程，也会在 alert 点击确认后消失
                     setTimeout(() => {
                         const firstBuilder = app.graph.findNodesByType("AppBuilder")[0] || app.graph.findNodesByType("AppBuilderAdv")[0];
+                        const manager = document.getElementById("app-manager-iframe");
                         if (firstBuilder) {
                             const btnAppView = firstBuilder.widgets?.find(w => w.is_appview_button);
                             if (btnAppView && btnAppView.callback) btnAppView.callback();
+                            if (manager && manager.contentWindow) {
+                                setTimeout(() => {manager.contentWindow.postMessage({ type: "hide_splash" }, "*"); }, 1000); 
+                            }
                         } else {
                             alert(i18n.not_app);
+                            // alert 是阻塞的，用户点完确认后才会往下走并解除遮挡！
+                            if (manager && manager.contentWindow) manager.contentWindow.postMessage({ type: "hide_splash" }, "*");
                         }
                     }, 600); 
                 }
-            } catch (err) {
-                console.error("Auto load workflow failed:", err);
-            }
+            } catch (err) { console.error("Auto load workflow failed:", err); }
         }
     });
     
     if (!api._queuePromptPatched) {
         api._queuePromptPatched = true;
         const originalQueuePrompt = api.queuePrompt;
-        
         api.queuePrompt = async function() {
             try {
                 return await originalQueuePrompt.apply(this, arguments);
             } catch (err) {
-                // 默认使用原有的宽泛错误
                 let detailedMessage = err.message || String(err);
-                
-                // 💡 核心：尝试从 err.response 提取后端的详细 JSON 报错
                 if (err.response) {
                     try {
                         const errorData = err.response.error;
                         const nodeErrors = err.response.node_errors;
                         let details = [];
-                        // 1. 获取全局错误类型描述 (例如: "Prompt outputs failed validation")
                         if (errorData && errorData.message) details.push(errorData.message);
-                        // 2. 遍历后端返回的错误节点对象，提取具体的错误字段
                         if (nodeErrors) {
                             for (const [nodeId, nodeInfo] of Object.entries(nodeErrors)) {
                                 if (nodeInfo.errors && nodeInfo.errors.length > 0) {
                                     nodeInfo.errors.forEach(e => {
-                                        // 尝试获取用户自定义的节点名称，如果没有则使用类型或 ID
                                         const nodeDef = app.graph.getNodeById(nodeId);
                                         const nodeTitle = nodeDef?.title || nodeInfo.class_type || `Node ${nodeId}`;
-                                        
-                                        // 拼接精准报错，例如：[KSampler]: Required input is missing (model)
                                         details.push(`[${nodeTitle}]: ${e.message} (${e.details})`);
                                     });
                                 }
                             }
                         }
-                        
-                        // 如果成功提取到，则替换 message
-                        if (details.length > 0) {
-                            detailedMessage = details.join('\n');
-                        }
-                    } catch (parseErr) {
-                        console.warn("Failed to parse ComfyUI detailed error:", parseErr);
-                    }
+                        if (details.length > 0) detailedMessage = details.join('\n');
+                    } catch (parseErr) {}
                 }
-                
-                // 广播给活跃的子页面
-                const nodes = [
-                    ...app.graph.findNodesByType("AppBuilderAdv"),
-                    ...app.graph.findNodesByType("AppBuilder")
-                ];
-                
+                const nodes = [...app.graph.findNodesByType("AppBuilderAdv"), ...app.graph.findNodesByType("AppBuilder")];
                 nodes.forEach(node => {
-                    if (node.appWindow && !node.appWindow.closed) {
-                        node.appWindow.postMessage({
-                            type: 'pre_queue_error',
-                            message: detailedMessage
-                        }, '*');
-                    }
+                    if (node.appWindow && !node.appWindow.closed) { node.appWindow.postMessage({ type: 'pre_queue_error', message: detailedMessage }, '*'); }
                 });
-                
-                throw err; // 👈 扔回给 ComfyApp 原生核心
+                throw err;
             }
         };
     }
@@ -285,7 +231,6 @@ async function setupAPI() {
 const applyBypasser = (v, params, graph) => {
     if (!graph || !graph._nodes) return;
     const nodes = findAllNodes(graph._nodes, null);
-    
     const tIds = params.match_id ? (Array.isArray(params.match_id) ? params.match_id : [params.match_id]).map(String) : null;
     const tTitles = params.match_title ? (Array.isArray(params.match_title) ? params.match_title : [params.match_title]).map(String) : null;
     const tGroups = params.match_group ? (Array.isArray(params.match_group) ? params.match_group : [params.match_group]).map(String) : null;
@@ -312,7 +257,7 @@ const applyBypasser = (v, params, graph) => {
         const nid = String(n.id);
         const ntitle = String(n.title || n.type);
         if (tIds && tIds.includes(nid)) match = true;
-        if (tTitles && tTitles.includes(ntitle)) match = true; // 🔥 补齐：按标题匹配
+        if (tTitles && tTitles.includes(ntitle)) match = true;
         if (tGroups && groupMatchedNodeIds.has(nid)) match = true;
         if (match) n.mode = v ? 0 : 4; 
     });
@@ -320,15 +265,11 @@ const applyBypasser = (v, params, graph) => {
 
 const saveWidgetValueToConfig = (node, key, val) => {
     const jsonW = node.widgets?.find(w => w.name === "config_json");
-    
     if (jsonW && jsonW.value) {
         try {
             const config = JSON.parse(jsonW.value);
-            if (config[key]) {
-                config[key].value = val; // 将新值存入对应的 Key 名下
-                jsonW.value = JSON.stringify(config);
-            }
-        } catch(e) { console.error(e); }
+            if (config[key]) { config[key].value = val; jsonW.value = JSON.stringify(config); }
+        } catch(e) {}
     }
 };
 
@@ -340,38 +281,28 @@ const notifyConnectedAppBuilder = (bypasserNode) => {
             const link = app.graph.links[linkId];
             if (link) {
                 const targetNode = app.graph.getNodeById(link.target_id);
-                if (targetNode && typeof targetNode.syncAllConnections === "function") {
-                    targetNode.syncAllConnections(); // 触发主面板刷新
-                }
+                if (targetNode && typeof targetNode.syncAllConnections === "function") { targetNode.syncAllConnections(); }
             }
         });
     }
 };
 
 const setupUploaderWidget = (node, key, param, defaultVal, validKeys) => {
-    // 1. 获取 LoadImage 的图片库列表作为下拉默认值
     let inputFiles = ["None"];
-    if (app.node_defs && app.node_defs["LoadImage"]) {
-        inputFiles = app.node_defs["LoadImage"].input.required.image[0];
-    } else if (defaultVal) {
-        inputFiles = [defaultVal];
-    }
+    if (app.node_defs && app.node_defs["LoadImage"]) { inputFiles = app.node_defs["LoadImage"].input.required.image[0]; } 
+    else if (defaultVal) { inputFiles = [defaultVal]; }
     
-    // 2. 创建或同步 Combo 下拉选择器
     let comboWidget = node.widgets?.find(w => w.name === key);
     if (!comboWidget) {
         comboWidget = node.addWidget("combo", key, defaultVal || inputFiles[0], ()=>{
             if (typeof node.notifyUnpackers === "function") node.notifyUnpackers();
         }, { values: inputFiles });
     } else {
-        // 🔥 终极修复：如果它是从存档（加载网页）恢复出来的，它的 options 100% 是 undefined。
-        // 我们必须在这里强行帮它初始化 {}，重新赋予它选项列表，否则它将永远失去下拉功能！
         if (!comboWidget.options) comboWidget.options = {}; 
         comboWidget.options.values = inputFiles;
     }
     comboWidget.label = param.name || key;
     
-    // 3. 动态维护配套的 "Choose File" 上传按钮
     let uploadBtn = node.widgets?.find(w => w.value === "Upload" && w.associatedKey === key);
     if (!uploadBtn) {
         uploadBtn = node.addWidget("button", "Choose File", "Upload", () => {
@@ -388,62 +319,37 @@ const setupUploaderWidget = (node, key, param, defaultVal, validKeys) => {
                     const file = fileInput.files[0];
                     uploadBtn.label = "Uploading...";
                     node.setDirtyCanvas(true, true);
-                    
-                    const formData = new FormData();
-                    formData.append("image", file);
-                    
+                    const formData = new FormData(); formData.append("image", file);
                     try {
-                        const response = await fetch("/upload/image", {
-                            method: "POST",
-                            body: formData
-                        });
+                        const response = await fetch("/upload/image", { method: "POST", body: formData });
                         if (response.ok) {
                             const result = await response.json();
-                            
                             if (comboWidget.options && comboWidget.options.values) {
-                                if (!comboWidget.options.values.includes(result.name)) {
-                                    comboWidget.options.values.push(result.name);
-                                }
+                                if (!comboWidget.options.values.includes(result.name)) { comboWidget.options.values.push(result.name); }
                             }
-                            comboWidget.value = result.name; 
-                            uploadBtn.label = "Success ✅";
-                            
+                            comboWidget.value = result.name; uploadBtn.label = "Success ✅";
                             if (comboWidget.callback) comboWidget.callback(result.name);
                             if (typeof node.notifyUnpackers === "function") node.notifyUnpackers();
-                        } else {
-                            uploadBtn.label = "Failed ❌";
-                        }
-                    } catch (e) {
-                        console.error(e);
-                        uploadBtn.label = "Error ❌";
-                    }
+                        } else { uploadBtn.label = "Failed ❌"; }
+                    } catch (e) { uploadBtn.label = "Error ❌"; }
                     node.setDirtyCanvas(true, true);
-                    setTimeout(() => {
-                        uploadBtn.label = "Choose File";
-                        node.setDirtyCanvas(true, true);
-                    }, 1000);
+                    setTimeout(() => { uploadBtn.label = "Choose File"; node.setDirtyCanvas(true, true); }, 1000);
                 }
             };
             fileInput.click();
         });
-        
-        uploadBtn.associatedKey = key;
-        uploadBtn.serialize = false;
+        uploadBtn.associatedKey = key; uploadBtn.serialize = false;
     }
-    
     return comboWidget;
 };
                 
 function getActiveWorkflow() {
     const vueApp = document.querySelector('[data-v-app]')?.__vue_app__;
     const pinia = vueApp?.config.globalProperties.$pinia;
-    
     if (!pinia) return null;
-    
     for (const store of Object.values(pinia.state.value)) {
         if (store.activeWorkflow) return store.activeWorkflow;
     }
-    
     return null;
 }
 
@@ -456,17 +362,11 @@ const saveActiveWorkflow = async () => {
                 const serializedState = app.graph.serialize();
                 const cleanStateStr = JSON.stringify(app.graph.serialize());
                 const hasZeroNodes = !app.graph._nodes || app.graph._nodes.length === 0;
-                if (!serializedState || cleanStateStr === "null" || hasZeroNodes) {
-                    console.warn("[AppBuilder] 🛡️ Save Aborted!");
-                    return; // 强行拦截！
-                }
-                console.log(`[AppBuilder] Auto-save: "${wf.fullFilename}"`);
+                if (!serializedState || cleanStateStr === "null" || hasZeroNodes) { return; }
                 await wf.save();
             }
         }
-    } catch (e) {
-        console.warn("[AppBuilder] Auto-save failed:", e);
-    }
+    } catch (e) {}
 }
                 
 const closeActiveWorkflow = async () => {
@@ -476,59 +376,41 @@ const closeActiveWorkflow = async () => {
         if (pinia && pinia._s) {
             let wfStoreInstance = null;
             for (const [id, instance] of pinia._s.entries()) {
-                if (instance && instance.activeWorkflow !== undefined) {
-                    wfStoreInstance = instance;
-                    break;
-                }
+                if (instance && instance.activeWorkflow !== undefined) { wfStoreInstance = instance; break; }
             }
             if (wfStoreInstance) {
                 const openWorkflows = wfStoreInstance.openWorkflows || wfStoreInstance.workflows || [];
                 const activeWf = wfStoreInstance.activeWorkflow;
-                
                 if (openWorkflows.length > 1 && activeWf) {
-                    if (typeof wfStoreInstance.closeWorkflow === "function") {
-                        await wfStoreInstance.closeWorkflow(activeWf);
-                    }
+                    if (typeof wfStoreInstance.closeWorkflow === "function") { await wfStoreInstance.closeWorkflow(activeWf); }
                 }
             }
         }
-    } catch(err) { console.warn("AppView close sync failed:", err); }
+    } catch(err) {}
 };
                 
 function openAppViewIframe(node) {
     const htmlUrl = new URL('app_view.html', import.meta.url);
     htmlUrl.searchParams.set('nodeId', node.id);
-    
     const oldIframe = document.getElementById("appview-iframe");
     if (oldIframe) oldIframe.remove();
     
     const iframe = document.createElement("iframe");
     iframe.id = "appview-iframe";
-    
     Object.assign(iframe.style, {
-        position: "fixed",
-        top: "0",
-        left: "0",
-        bottom: "0",
-        width: "100%",
-        height: "100dvh",
-        zIndex: "999999",
-        border: "none",
-        opacity: "0",           // 初始完全透明
-        transition: "opacity 0.3s ease", // 可选淡入效果
+        position: "fixed", top: "0", left: "0", bottom: "0", width: "100%", height: "100dvh",
+        zIndex: "999999", border: "none", opacity: "0", transition: "opacity 0.3s ease", 
         backgroundColor: localStorage.getItem('appview_theme') === 'light' ? '#fafafa' : '#000000',
     });
     
     document.body.appendChild(iframe);
     iframe.src = htmlUrl.href;
-    
     iframe.onload = function() { iframe.style.opacity = "1"; };
-    setTimeout(() => { iframe.style.opacity = "1"; }, 10000);
+    setTimeout(() => { iframe.style.opacity = "1"; }, 500);
     return iframe;
 }
 
 function setupAppWindowBridge(context, api) {
-    // 事件配置列表：apiEvent 为监听的事件名，msgType 为发送的消息类型，payload 为可选的载荷转换函数
     const eventConfigs = [
         { apiEvent: "b_preview", msgType: "b_preview", payload: (e) => ({ blob: e.detail }) },
         { apiEvent: "executed", msgType: "executed", payload: (e) => ({ detail: e.detail }) },
@@ -541,24 +423,16 @@ function setupAppWindowBridge(context, api) {
         { apiEvent: "appbuilder_log", msgType: "appbuilder_log", payload: (e) => ({ detail: e.detail }) },
     ];
     
-    // 清除已绑定监听器的内部函数
     const removeListeners = () => {
         if (context._bridgeHandlers) {
-            context._bridgeHandlers.forEach(({ apiEvent, handler }) => {
-                api.removeEventListener(apiEvent, handler);
-            });
+            context._bridgeHandlers.forEach(({ apiEvent, handler }) => { api.removeEventListener(apiEvent, handler); });
             context._bridgeHandlers = null;
         }
     };
     
-    // 1. 定义 registerAppWindow 方法
     context.registerAppWindow = (appWin) => {
         context.appWindow = appWin;
-        
-        // 清理上一次的监听器
         removeListeners();
-        
-        // 批量创建并注册新的监听器
         context._bridgeHandlers = eventConfigs.map(({ apiEvent, msgType, payload }) => {
             const handler = (e) => {
                 if (context.appWindow && !context.appWindow.closed) {
@@ -571,78 +445,47 @@ function setupAppWindowBridge(context, api) {
         });
     };
     
-    // 2. 包装 onRemoved 方法以确保销毁时清理监听器
     const originalOnRemoved = context.onRemoved;
     context.onRemoved = function (...args) {
         removeListeners();
-        if (originalOnRemoved) {
-            originalOnRemoved.apply(this, args);
-        }
+        if (originalOnRemoved) { originalOnRemoved.apply(this, args); }
     };
 }
 
-// 开启可视化配置浮层
 function openConfigOverlay(nodeId) {
     if (document.querySelector('.config-modal-overlay')) return;
-
-    // 创建模糊遮罩层背景
     const overlay = document.createElement('div');
     overlay.className = 'config-modal-overlay';
     overlay.style.cssText = `
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.85);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        z-index: 99999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        z-index: 99999; display: flex; justify-content: center; align-items: center;
     `;
-
-    // 载入同级目录下的配置网页 HTML
     const iframe = document.createElement('iframe');
     const htmlUrl = new URL('config_panel.html', import.meta.url);
     htmlUrl.searchParams.set('nodeId', nodeId);
     iframe.src = htmlUrl.href;
     iframe.style.cssText = `
-        width: 90vw;
-        height: 90vh;
-        max-width: 920px;
-        max-height: 800px;
-        border: 1px solid #333;
-        border-radius: 16px;
-        background: #121212;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-        overflow: hidden;
+        width: 90vw; height: 90vh; max-width: 920px; max-height: 800px;
+        border: 1px solid #333; border-radius: 16px; background: #121212;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.8); overflow: hidden;
     `;
-
-    overlay.appendChild(iframe);
-    document.body.appendChild(overlay);
-
-    // 注册全局销毁挂载，让 iframe 内部可直接销毁自身
-    window.closeConfigOverlay = () => {
-        document.body.removeChild(overlay);
-        delete window.closeConfigOverlay;
-    };
+    overlay.appendChild(iframe); document.body.appendChild(overlay);
+    window.closeConfigOverlay = () => { document.body.removeChild(overlay); delete window.closeConfigOverlay; };
 }
                 
 setupAPI();
 
 app.registerExtension({
     name: "AppBuilder.AppBuilderAdv",
-
     async setup() {
         const originalGraphToPrompt = app.graphToPrompt;
-        
         app.graphToPrompt = async function () {
             const res = await originalGraphToPrompt.apply(this, arguments);
             const prompt = res.output; 
-            
             try {
                 const panelOutputs = {};
                 const replaceMap = {};
-                
                 for (const [nodeId, node] of Object.entries(prompt)) {
                     if (node.class_type === "AppBuilderAdv") {
                         const configJson = node.inputs?.config_json || "{}";
@@ -661,16 +504,10 @@ app.registerExtension({
                                 const rawOpt = params.optional || false;
                                 const displayKey = rawOpt ? `${key} (opt)` : key;
                                 const inLink = node.inputs[displayKey];
-                                
-                                if (inLink && Array.isArray(inLink)) {
-                                    panelOutputs[nodeId][slotIdx] = inLink;
-                                } else {
-                                    if (rawOpt) {
-                                        panelOutputs[nodeId][slotIdx] = null;
-                                    } else {
-                                        alert(`Validation Error: Required input '${key}' is missing!`);
-                                        throw new Error(`Required input missing`);
-                                    }
+                                if (inLink && Array.isArray(inLink)) { panelOutputs[nodeId][slotIdx] = inLink; } 
+                                else {
+                                    if (rawOpt) { panelOutputs[nodeId][slotIdx] = null; } 
+                                    else { alert(`Validation Error: Required input '${key}' is missing!`); throw new Error(`Required input missing`); }
                                 }
                             } else {
                                 let val = node.inputs[key];
@@ -678,7 +515,7 @@ app.registerExtension({
                                 if (type === "INT" || type === "SEED") val = Math.round(Number(val));
                                 else if (type === "FLOAT") val = Number(val);
                                 else if (type === "BOOLEAN" || type === "BYPASSER") val = Boolean(val);
-                                else if (type === "STRING" || type === "UPLOADER") val = String(val);
+                                else if (type === "STRING" || type === "UPLOADER" || type === "LORA_STACK") val = String(val);
                                 panelOutputs[nodeId][slotIdx] = val;
                             }
                         });
@@ -690,34 +527,23 @@ app.registerExtension({
                         let panelId = null;
                         if (node.inputs) {
                             for (const val of Object.values(node.inputs)) {
-                                if (Array.isArray(val) && val.length === 2) {
-                                    panelId = String(val[0]);
-                                    break;
-                                }
+                                if (Array.isArray(val) && val.length === 2) { panelId = String(val[0]); break; }
                             }
                         }
-                        if (panelId && panelOutputs[panelId]) {
-                            replaceMap[nodeId] = panelOutputs[panelId];
-                        }
+                        if (panelId && panelOutputs[panelId]) { replaceMap[nodeId] = panelOutputs[panelId]; }
                     }
                 }
                             
                 for (const [nodeId, node] of Object.entries(prompt)) {
                     if (node.class_type === "AppBuilderAdv" || node.class_type === "ParametersUnpacker") continue;
-                    
                     if (node.inputs) {
                         for (const [inKey, inVal] of Object.entries(node.inputs)) {
                             if (Array.isArray(inVal) && inVal.length === 2) {
                                 const sourceId = String(inVal[0]);
                                 const sourceSlot = inVal[1];
-                                
                                 if (replaceMap[sourceId] && replaceMap[sourceId][sourceSlot] !== undefined) {
                                     const replaceVal = replaceMap[sourceId][sourceSlot];
-                                    if (replaceVal === null) {
-                                        delete node.inputs[inKey];
-                                    } else {
-                                        node.inputs[inKey] = replaceVal;
-                                    }
+                                    if (replaceVal === null) { delete node.inputs[inKey]; } else { node.inputs[inKey] = replaceVal; }
                                 }
                             }
                         }
@@ -729,38 +555,30 @@ app.registerExtension({
                         delete prompt[nodeId];
                     }
                 }
-            } catch(e) {
-                console.error("[AppBuilder] Graph interception failed:", e);
-            }
+            } catch(e) {}
             return res; 
         };
     },
     
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if (nodeData.name === "AppBuilderAdv") {
-            
             const onConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function (info) {
                 this.isConfigured = true; 
                 if (onConfigure) onConfigure.apply(this, arguments);
-                
                 if (info && info.widgets_values) {
                     const savedJson = info.widgets_values[0];
                     this.buildDynamicUI(savedJson, true, info.widgets_values); 
                 }
-                
                 const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
                 if (autoOpenWidget && typeof autoOpenWidget.value !== "boolean") autoOpenWidget.value = false;
                 const showTitleWidget = this.widgets?.find(w => w.name === "Short Title");
                 if (showTitleWidget && typeof showTitleWidget.value !== "boolean") showTitleWidget.value = true;
-                
                 setTimeout(() => {
                     const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
                     if (autoOpenWidget && autoOpenWidget.value === true) {
                         const btnAppView = this.widgets?.find(w => w.is_appview_button);
-                        if (btnAppView && btnAppView.callback && !isMobile()) {
-                            btnAppView.callback();
-                        }
+                        if (btnAppView && btnAppView.callback && !isMobile()) { btnAppView.callback(); }
                     }
                 }, 500);
             };
@@ -768,48 +586,32 @@ app.registerExtension({
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
-                
                 this.size = [300, 120];
                 setupAppWindowBridge(this, api);
 
-                const btnWidget = this.addWidget("button", "📱 Open in AppView", "btn_app_view", () => {
-                    openAppViewIframe(this)
-                });
-                
-                // 👇 【核心修复】：利用 Object.defineProperty 绕过只读 Getter 限制，强行重写绘制高度
+                const btnWidget = this.addWidget("button", "📱 Open in AppView", "btn_app_view", () => { openAppViewIframe(this) });
                 Object.defineProperty(btnWidget, 'height', { get() { return 40; }, configurable: true });
                 btnWidget.computeSize = function(width) { return [width, 40]; };
                 btnWidget.is_appview_button = true;
                 
-                this.addWidget("button", "⚙️ Configure Panel", "btn_configure", () => {
-                    openConfigOverlay(this.id);
-                });
+                const btnWidget2 = this.addWidget("button", "⚙️ Configure Panel", "btn_configure", () => { openConfigOverlay(this.id); });
+                btnWidget2.is_configure_button = true;
                 
                 this.addWidget("toggle", "Auto Launch", false, (v) => {
                     if (v) {
-                        const nodes = [
-                            ...app.graph.findNodesByType("AppBuilderAdv"),
-                            ...app.graph.findNodesByType("AppBuilder")
-                        ];
+                        const nodes = [...app.graph.findNodesByType("AppBuilderAdv"), ...app.graph.findNodesByType("AppBuilder")];
                         const otherNodes = nodes.filter(n => n.id !== this.id);
                         otherNodes.forEach(n => {
                             const otherToggle = n.widgets?.find(w => w.name === "Auto Launch");
-                            if (otherToggle && otherToggle.value === true) {
-                                otherToggle.value = false;
-                                if (otherToggle.callback) otherToggle.callback(false);
-                            }
+                            if (otherToggle && otherToggle.value === true) { otherToggle.value = false; if (otherToggle.callback) otherToggle.callback(false); }
                         });
                     }
                 }, {});
 
-                // 强制将画布上的无用配置字段（config_json等）永久隐藏
                 setTimeout(() => {
-                    const jsonW = this.widgets.find(w => w.name === "config_json");
-                    if (jsonW) hideWidget(jsonW);
-                    const prevW = this.widgets.find(w => w.name === "live_preview");
-                    if (prevW) hideWidget(prevW);
-                    this.computeSize();
-                    this.setDirtyCanvas(true, true);
+                    const jsonW = this.widgets.find(w => w.name === "config_json"); if (jsonW) hideWidget(jsonW);
+                    const prevW = this.widgets.find(w => w.name === "live_preview"); if (prevW) hideWidget(prevW);
+                    this.computeSize(); this.setDirtyCanvas(true, true);
                 }, 50);
 
                 this.notifyUnpackers = function() {
@@ -818,31 +620,23 @@ app.registerExtension({
                         const link = app.graph.links[linkId];
                         if (link) {
                             const targetNode = app.graph.getNodeById(link.target_id);
-                            if (targetNode && targetNode.type === "ParametersUnpacker") {
-                                targetNode.syncFromUpstream();
-                            }
+                            if (targetNode && targetNode.type === "ParametersUnpacker") { targetNode.syncFromUpstream(); }
                         }
                     });
                 };
 
                 this.buildDynamicUI = async function(customJsonStr = null, isRestoring = false, storedValues = null) {
-                    this.imgs = [];
-                    this.setDirtyCanvas(true, true);
-                    
+                    this.imgs = []; this.setDirtyCanvas(true, true);
                     let jsonStr = customJsonStr || this.widgets.find(w => w.name === "config_json")?.value;
                     if (jsonStr === "" || !jsonStr) jsonStr = "{}";
 
                     let config;
                     try { config = JSON.parse(jsonStr); } catch (e) { return; }
-                    
                     const entries = Object.entries(config).slice(0, 32);
 
                     const isStatic = (w) => (
-                        w.name === "config_json" || 
-                        w.name === "live_preview" || 
-                        w.value === "btn_configure" || 
-                        w.value === "btn_app_view" ||
-                        w.name === "Auto Launch"
+                        w.name === "config_json" || w.name === "live_preview" || w.is_appview_button || w.is_configure_button ||
+                        w.value === "btn_configure" || w.value === "btn_app_view" || w.name === "Auto Launch"
                     );
 
                     for (let i = this.widgets.length - 1; i >= 0; i--) {
@@ -860,20 +654,16 @@ app.registerExtension({
                             const inp = this.inputs[i];
                             if (inp.link) {
                                 const l = app.graph.links[inp.link];
-                                if (l) {
-                                    oldInputs.push({ name: inp.name, origin_id: l.origin_id, origin_slot: l.origin_slot });
-                                }
+                                if (l) { oldInputs.push({ name: inp.name, origin_id: l.origin_id, origin_slot: l.origin_slot }); }
                             }
                         }
-                        while(this.inputs.length > 0) {
-                            this.removeInput(this.inputs.length - 1);
-                        }
+                        while(this.inputs.length > 0) { this.removeInput(this.inputs.length - 1); }
                     }
 
                     for (const [key, params] of entries) {
                         const type = (params.type || "STRING").toUpperCase();
                         let widget;
-                        let val = params.default;
+                        let val = params.value !== undefined ? params.value : params.default;
 
                         if (type === "INT" || type === "FLOAT") {
                             const isInt = type === "INT";
@@ -881,70 +671,54 @@ app.registerExtension({
                             const prec = params.precision ?? (isInt ? 0 : 3);
                             const isSlider = params.slider === true || params.display === "slider";
                             
-                            if (isSlider && (params.min === undefined || params.max === undefined)) {
-                                continue;
-                            }
+                            if (isSlider && (params.min === undefined || params.max === undefined)) { continue; }
                             
-                            const minVal = params.min ?? -999999;
-                            const maxVal = params.max ?? 999999;
+                            const minVal = params.min ?? -999999; const maxVal = params.max ?? 999999;
                             const initVal = val ?? 0;
                             
                             widget = this.addWidget(isSlider ? "slider" : "number", key, initVal, (v) => {
                                 let snapped = isInt ? Math.round(v) : Math.round(v / step) * step;
                                 const finalVal = parseFloat(snapped.toFixed(prec));
-                                if (widget.value !== finalVal) {
-                                    widget.value = finalVal;
-                                }
-                            }, { 
-                                min: minVal, 
-                                max: maxVal, 
-                                step: isSlider ? step : step * 10, 
-                                precision: prec 
-                            });
+                                if (widget.value !== finalVal) { widget.value = finalVal; }
+                                saveWidgetValueToConfig(this, key, finalVal);
+                            }, { min: minVal, max: maxVal, step: isSlider ? step : step * 10, precision: prec });
                         } else if (type === "SEED") {
-                            const minVal = params.min ?? 0;
-                            const maxVal = params.max ?? 0xffffffffffffffff;
-                            const initVal = val ?? params.default ?? 0;
-                                
-                            ComfyWidgets.INT(this, key, ["INT", { 
-                                default: initVal, 
-                                min: minVal, 
-                                max: maxVal, 
-                                control_after_generate: true 
-                            }], app);
-                            
+                            const minVal = params.min ?? 0; const maxVal = params.max ?? 0xffffffffffffffff; const initVal = val ?? params.default ?? 0;
+                            ComfyWidgets.INT(this, key, ["INT", { default: initVal, min: minVal, max: maxVal, control_after_generate: true }], app);
                             widget = this.widgets.find(w => w.name === key);
                             if (widget) widget.value = initVal;
                         } else if (type === "STRING") {
                             if (params.multiline || params.placeholder) {
                                 ComfyWidgets.STRING(this, key, ["STRING", { multiline: !!params.multiline, default: val || "" }], app);
-                                widget = this.widgets[this.widgets.length - 1];
-                                widget.value = val || "";
+                                widget = this.widgets[this.widgets.length - 1]; widget.value = val || "";
                                 if (widget.inputEl && params.placeholder) widget.inputEl.placeholder = params.placeholder;
-                            } else {
-                                widget = this.addWidget("text", key, val || "", (v) => {}, {});
+                            } else { widget = this.addWidget("text", key, val || "", (v) => saveWidgetValueToConfig(this, key, v), {}); }
+                        } else if (type === "LORA_STACK") {
+                            // 💾【核心修复】：传入 saveWidgetValueToConfig 回调，将数据实时写入 config_json 的 value 字段！
+                            widget = this.addWidget("text", key, val || "[]", (v) => saveWidgetValueToConfig(this, key, v), { read_only: true });
+                            if (widget) {
+                                widget.disabled = true;
+                                widget.options = widget.options || {};
+                                widget.options.read_only = true;
+                                widget.label = `🔒 ${params.name || key} (Edit in AppView)`;
                             }
                         } else if (type === "COMBO") {
                             let values = params.values || ["None"];
                             if (params.folder) {
                                 try {
                                     const response = await fetch(`/appbuilder/ls/${params.folder}`);
-                                    if (response.ok) {
-                                        const data = await response.json();
-                                        values = ["None", ...data];
-                                    }
-                                } catch (e) { console.error("Fetch models failed:", e); }
+                                    if (response.ok) { const data = await response.json(); values = ["None", ...data]; }
+                                } catch (e) {}
                             }
-                            widget = this.addWidget("combo", key, val || values[0], (v) => {}, { values: values });
+                            widget = this.addWidget("combo", key, val || values[0], (v) => saveWidgetValueToConfig(this, key, v), { values: values });
                         } else if (type === "BOOLEAN") {
-                            widget = this.addWidget("toggle", key, val ?? true, (v) => {}, {});
+                            widget = this.addWidget("toggle", key, val ?? true, (v) => saveWidgetValueToConfig(this, key, v), {});
                         } else if (type === "BYPASSER") {
                             const applyMuter = (v) => {
                                 const nodes = findAllNodes(app.graph._nodes, null); 
                                 const tIds = params.match_id ? (Array.isArray(params.match_id) ? params.match_id : [params.match_id]).map(String) : null;
                                 const tTitles = params.match_title ? (Array.isArray(params.match_title) ? params.match_title : [params.match_title]).map(String) : null;
                                 const tGroups = params.match_group ? (Array.isArray(params.match_group) ? params.match_group : [params.match_group]).map(String) : null;
-                                
                                 const groupMatchedNodeIds = new Set();
                                 if (tGroups) {
                                     const collectFromGraph = (graph) => {
@@ -961,14 +735,10 @@ app.registerExtension({
                                     };
                                     collectFromGraph(app.graph);
                                 }
-                                
                                 nodes.forEach(n => {
                                     let match = false;
-                                    const nid = String(n.id);
-                                    const ntitle = String(n.title || n.type);
-                                    if (tIds) match = tIds.includes(nid);
-                                    if (tTitles) match = tTitles.includes(ntitle);
-                                    if (tGroups) match = groupMatchedNodeIds.has(nid);
+                                    const nid = String(n.id); const ntitle = String(n.title || n.type);
+                                    if (tIds) match = tIds.includes(nid); if (tTitles) match = tTitles.includes(ntitle); if (tGroups) match = groupMatchedNodeIds.has(nid);
                                     if (match) n.mode = v ? 0 : 4;
                                 });
                             };
@@ -991,9 +761,7 @@ app.registerExtension({
                         }
 
                         if (widget) {
-                            widget.label = params.name || key;
-                            widget.tooltip = params.tooltip;
-                            
+                            widget.label = params.name || key; widget.tooltip = params.tooltip;
                             if (storedValues) {
                                 const wIdx = this.widgets.indexOf(widget);
                                 if (wIdx !== -1 && storedValues[wIdx] !== undefined) widget.value = storedValues[wIdx];
@@ -1002,15 +770,12 @@ app.registerExtension({
                     }
                     
                     if (!isRestoring) this.notifyUnpackers();
-                    this.computeSize();
-                    this.setDirtyCanvas(true, true);
+                    this.computeSize(); this.setDirtyCanvas(true, true);
                 };
 
                 setTimeout(() => {
-                    const jsonW = this.widgets.find(w => w.name === "config_json");
-                    if (jsonW) hideWidget(jsonW);
-                    const prevW = this.widgets.find(w => w.name === "live_preview");
-                    if (prevW) hideWidget(prevW);
+                    const jsonW = this.widgets.find(w => w.name === "config_json"); if (jsonW) hideWidget(jsonW);
+                    const prevW = this.widgets.find(w => w.name === "live_preview"); if (prevW) hideWidget(prevW);
                     if (!this.isConfigured) this.buildDynamicUI(null, true);
                 }, 100);
                 return r;
@@ -1021,38 +786,21 @@ app.registerExtension({
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
-                this.outputs = [];
-                this.size = [200, 40];
-                
+                this.outputs = []; this.size = [200, 40];
                 this.syncFromUpstream = function() {
                     if (!this.inputs || !this.inputs[0].link) {
-                        if (this.outputs) {
-                            for (let i = 0; i < this.outputs.length; i++) this.disconnectOutput(i);
-                        }
-                        this.outputs = [];
-                        this.computeSize();
-                        this.setDirtyCanvas(true, true);
-                        return;
+                        if (this.outputs) { for (let i = 0; i < this.outputs.length; i++) this.disconnectOutput(i); }
+                        this.outputs = []; this.computeSize(); this.setDirtyCanvas(true, true); return;
                     }
-                    
-                    const linkId = this.inputs[0].link;
-                    const link = app.graph.links[linkId];
-                    if (!link) return;
-                    
-                    const upstreamNode = app.graph.getNodeById(link.origin_id);
-                    if (!upstreamNode || upstreamNode.type !== "AppBuilderAdv") return;
-                    
-                    const jsonWidget = upstreamNode.widgets.find(w => w.name === "config_json");
-                    if (!jsonWidget) return;
-                    const value = jsonWidget.value || "{}"
+                    const linkId = this.inputs[0].link; const link = app.graph.links[linkId]; if (!link) return;
+                    const upstreamNode = app.graph.getNodeById(link.origin_id); if (!upstreamNode || upstreamNode.type !== "AppBuilderAdv") return;
+                    const jsonWidget = upstreamNode.widgets.find(w => w.name === "config_json"); if (!jsonWidget) return;
                     
                     let config;
-                    try { config = JSON.parse(value); } catch (e) { return; }
+                    try { config = JSON.parse(jsonWidget.value || "{}"); } catch (e) { return; }
                     const entries = Object.entries(config).slice(0, 32);
-                    
                     const outputEntries = entries.filter(([k, p]) => {
-                        const t = (p.type || "STRING").toUpperCase();
-                        return t !== "BUTTON" && t !== "BYPASSER";
+                        const t = (p.type || "STRING").toUpperCase(); return t !== "BUTTON" && t !== "BYPASSER";
                     });
                     
                     const oldLinks = [];
@@ -1074,48 +822,29 @@ app.registerExtension({
                     outputEntries.forEach(([key, params], idx) => {
                         const baseType = (params.type || "*").toUpperCase();
                         let outputClass;
+                        if (params.class) { outputClass = String(params.class).toUpperCase() } 
+                        else if (baseType === "INPUT") { outputClass = "*";  } 
+                        else if (baseType === "SEED") { outputClass = "INT";  } 
+                        else if (baseType === "UPLOADER") { outputClass = "COMBO";  } 
+                        else if (baseType === "LORA_STACK") { outputClass = "STRING";  } 
+                        else { outputClass = baseType;  }
                         
-                        if (params.class) {
-                            outputClass = String(params.class).toUpperCase()
-                        } else if (baseType === "INPUT") {
-                            outputClass = "*"; 
-                        } else if (baseType === "SEED") {
-                            outputClass = "INT"; 
-                        } else if (baseType === "UPLOADER") {
-                            outputClass = "COMBO"; 
-                        } else {
-                            outputClass = baseType; 
-                        }
-                        
-                        const displayName = params.name || key;
-                        const isOptional = params.optional ?? false;
-                        
+                        const displayName = params.name || key; const isOptional = params.optional ?? false;
                         this.addOutput(key, outputClass, {shape: isOptional ? 7 : undefined});
-                        const newOutput = this.outputs[this.outputs.length - 1];
-                        newOutput.label = displayName;
+                        const newOutput = this.outputs[this.outputs.length - 1]; newOutput.label = displayName;
                         
                         const backup = oldLinks.find(l => l.name === key);
-                        if (backup) {
-                            backup.connections.forEach(conn => {
-                                this.connect(idx, conn.target_id, conn.target_slot);
-                            });
-                        }
+                        if (backup) { backup.connections.forEach(conn => { this.connect(idx, conn.target_id, conn.target_slot); }); }
                     });
-                    
-                    this.setSize(this.computeSize());
-                    this.setDirtyCanvas(true, true);
+                    this.setSize(this.computeSize()); this.setDirtyCanvas(true, true);
                 };
-                
                 return r;
             };
             
             const onConnectionsChange = nodeType.prototype.onConnectionsChange;
             nodeType.prototype.onConnectionsChange = function (type, slotIndex, isConnected, linkInfo) {
                 if (onConnectionsChange) onConnectionsChange.apply(this, arguments);
-                
-                if (type === 1 && slotIndex === 0) {
-                    setTimeout(() => this.syncFromUpstream(), 50);
-                }
+                if (type === 1 && slotIndex === 0) { setTimeout(() => this.syncFromUpstream(), 50); }
             };
             
             const onConfigure = nodeType.prototype.onConfigure;
@@ -1130,7 +859,6 @@ app.registerExtension({
 
 app.registerExtension({
     name: "AppBuilder.AppBuilder",
-    
     setup() {
         const originalGraphToPrompt = app.graphToPrompt;
         app.graphToPrompt = async function () {
@@ -1140,16 +868,12 @@ app.registerExtension({
                 const builderNodes = app.graph.findNodesByType("AppBuilder");
                 const panelData = {};
                 builderNodes.forEach(node => {
-                    const nodeId = String(node.id);
-                    panelData[nodeId] = {};
+                    const nodeId = String(node.id); panelData[nodeId] = {};
                     let config = {};
                     const jsonW = node.widgets?.find(w => w.name === "config_json");
-                    if (jsonW && jsonW.value) {
-                        try { config = JSON.parse(jsonW.value); } catch(e) {}
-                    }
+                    if (jsonW && jsonW.value) { try { config = JSON.parse(jsonW.value); } catch(e) {} }
                     Object.entries(config).forEach(([key, param]) => {
-                        const slotIdx = param._slot;
-                        if (slotIdx === undefined) return;
+                        const slotIdx = param._slot; if (slotIdx === undefined) return;
                         const targetWidget = node.widgets?.find(w => w.name === key);
                         let val = targetWidget ? targetWidget.value : param.default;
                         if (param.type === "INT" || param.type === "SEED") val = Math.round(Number(val));
@@ -1163,8 +887,7 @@ app.registerExtension({
                     if (promptNode.inputs) {
                         for (const [inKey, inVal] of Object.entries(promptNode.inputs)) {
                             if (Array.isArray(inVal) && inVal.length === 2) {
-                                const sourceId = String(inVal[0]);
-                                const sourceSlot = inVal[1];
+                                const sourceId = String(inVal[0]); const sourceSlot = inVal[1];
                                 if (panelData[sourceId] !== undefined) {
                                     const valToInject = panelData[sourceId][sourceSlot];
                                     if (valToInject !== undefined) promptNode.inputs[inKey] = valToInject;
@@ -1176,56 +899,37 @@ app.registerExtension({
                 }
                     
                 for (const nodeId of Object.keys(prompt)) {
-                    if (["AppBuilder", "AppBuilderBypasser"].includes(prompt[nodeId].class_type)) {
-                        delete prompt[nodeId];
-                    }
+                    if (["AppBuilder", "AppBuilderBypasser"].includes(prompt[nodeId].class_type)) { delete prompt[nodeId]; }
                 }
-            } catch(e) { console.error(e); }
+            } catch(e) {}
             return res; 
         };
     },
 
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        
-        // ==========================================
-        // 节点 A：收集器节点 (AppBuilderBypasser)
-        // ==========================================
         if (nodeData.name === "AppBuilderBypasser") {
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
-                this.addInput("node_1", "*"); 
-                //this.addOutput("BYPASSER", "BYPASSER");
-                this.size = [220, 80];
-
-                // 🔥 当输入框文本发生改变时，通知主节点重新拉取配置
+                this.addInput("node_1", "*"); this.size = [220, 80];
                 setTimeout(() => {
-                    // 绑定组名修改回调
                     const groupWidget = this.widgets?.find(w => w.name === "group_name");
-                    if (groupWidget) {
-                        groupWidget.callback = () => notifyConnectedAppBuilder(this);
-                    }
-                    
-                    // 🔥 新增：绑定名称修改回调，实现输入文字时主面板实时改名！
+                    if (groupWidget) { groupWidget.callback = () => notifyConnectedAppBuilder(this); }
                     const nameWidget = this.widgets?.find(w => w.name === "bypasser_name");
-                    if (nameWidget) {
-                        nameWidget.callback = () => notifyConnectedAppBuilder(this);
-                    }
+                    if (nameWidget) { nameWidget.callback = () => notifyConnectedAppBuilder(this); }
                 }, 100);
-
                 return r;
             };
 
             const onConnectionsChange = nodeType.prototype.onConnectionsChange;
             nodeType.prototype.onConnectionsChange = function (type, slotIndex, isConnected, linkInfo) {
                 if (onConnectionsChange) onConnectionsChange.apply(this, arguments);
-                if (type === 1) { // 输入端变化（挂接目标节点）
+                if (type === 1) { 
                     let hasEmpty = false;
                     for (let i = this.inputs.length - 1; i >= 0; i--) {
                         if (this.inputs[i].name.startsWith("node_")) {
                             if (!this.inputs[i].link) {
-                                if (hasEmpty) this.removeInput(i);
-                                else hasEmpty = true;
+                                if (hasEmpty) this.removeInput(i); else hasEmpty = true;
                             }
                         }
                     }
@@ -1243,41 +947,31 @@ app.registerExtension({
             const onConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function (info) {
                 if (onConfigure) onConfigure.apply(this, arguments);
-                
                 const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
                 if (autoOpenWidget && typeof autoOpenWidget.value !== "boolean") autoOpenWidget.value = false;
                 const showTitleWidget = this.widgets?.find(w => w.name === "Short Title");
                 if (showTitleWidget && typeof showTitleWidget.value !== "boolean") showTitleWidget.value = true;
-                
                 setTimeout(() => {
                     const autoOpenWidget = this.widgets?.find(w => w.name === "Auto Launch");
                     if (autoOpenWidget && autoOpenWidget.value === true) {
                         const btnAppView = this.widgets?.find(w => w.is_appview_button);
-                        if (btnAppView && btnAppView.callback && !isMobile()) {
-                            btnAppView.callback(); // 自动模拟点击“Open in AppView”，瞬间弹出窗口！
-                        }
+                        if (btnAppView && btnAppView.callback && !isMobile()) { btnAppView.callback(); }
                     }
-                }, 500); // 延迟 600ms 避开加载期，确保安全稳定弹出
+                }, 500); 
             };
             
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
-                this.size = [300, 100];
-                this.addInput("bypasser_1", "BYPASSER", { shape: 7 });
+                this.size = [300, 100]; this.addInput("bypasser_1", "BYPASSER", { shape: 7 });
                 setupAppWindowBridge(this, api);
+                
                 setTimeout(() => {
-                    const jsonW = this.widgets?.find(w => w.name === "config_json");
-                    if (jsonW) {
-                        hideWidget(jsonW);
-                        this.computeSize();
-                        this.setDirtyCanvas(true, true);
-                    }
+                    const jsonW = this.widgets.find(w => w.name === "config_json"); if (jsonW) { hideWidget(jsonW); }
                 }, 50);
-
+                
                 const btnWidget = this.addWidget("button", "📱 Open in AppView", "btn_app_view", () => {
-                    this.syncAllConnections();
-                    openAppViewIframe(this);
+                    this.syncAllConnections(); openAppViewIframe(this);
                 });
                 Object.defineProperty(btnWidget, 'height', { get() { return 40; }, configurable: true });
                 btnWidget.computeSize = function(width) { return [width, 40]; };
@@ -1285,53 +979,35 @@ app.registerExtension({
                 
                 this.addWidget("toggle", "Auto Launch", false, (v) => {
                     if (v) {
-                        const nodes = [
-                            ...app.graph.findNodesByType("AppBuilderAdv"),
-                            ...app.graph.findNodesByType("AppBuilder")
-                        ];
+                        const nodes = [...app.graph.findNodesByType("AppBuilderAdv"), ...app.graph.findNodesByType("AppBuilder")];
                         const otherNodes = nodes.filter(n => n.id !== this.id);
                         otherNodes.forEach(n => {
                             const otherToggle = n.widgets?.find(w => w.name === "Auto Launch");
-                            if (otherToggle && otherToggle.value === true) {
-                                otherToggle.value = false;
-                                if (otherToggle.callback) otherToggle.callback(false);
-                            }
+                            if (otherToggle && otherToggle.value === true) { otherToggle.value = false; if (otherToggle.callback) otherToggle.callback(false); }
                         });
                     }
                 }, {});
                 
-                // 👇 注册开关 2：标题显示开关 (默认开启)
-                this.addWidget("toggle", "Short Title", false, (v) => {
-                    this.syncAllConnections(); // 切换时立刻重构全图参数标签
-                }, {});
+                this.addWidget("toggle", "Short Title", false, (v) => { this.syncAllConnections(); }, {});
                 
-                // 在 onNodeCreated 接近末尾 return r; 之前：
                 if (this.inputs) {
                     for (let i = this.inputs.length - 1; i >= 0; i--) {
-                        if (this.inputs[i].name === "config_json") {
-                            this.removeInput(i); // 🔥 物理拔除
-                        }
+                        if (this.inputs[i].name === "config_json") { this.removeInput(i); }
                     }
                 }
                 return r;
             };
 
-            // 🔥 核心修改：左右双向自动扩展
             const onConnectionsChange = nodeType.prototype.onConnectionsChange;
             nodeType.prototype.onConnectionsChange = function (type, slotIndex, isConnected, linkInfo) {
                 if (onConnectionsChange) onConnectionsChange.apply(this, arguments);
-                
-                if (type === 1) { // 左侧输入 (Bypasser)
+                if (type === 1) { 
                     let hasEmpty = false;
                     for (let i = this.inputs.length - 1; i >= 0; i--) {
                         if (this.inputs[i].name.startsWith("bypasser_")) {
-                            if (!this.inputs[i].link) { 
-                                if (hasEmpty) this.removeInput(i); 
-                                else hasEmpty = true; 
-                            }
+                            if (!this.inputs[i].link) { if (hasEmpty) this.removeInput(i); else hasEmpty = true; }
                         }
                     }
-                    // 🔥 找回递增序号：根据现有通道计算出下一个合理的编号并加上 `bypasser_` 前缀
                     if (!hasEmpty) {
                         let nextIdx = 1;
                         while(this.inputs.find(inp => inp.name === `bypasser_${nextIdx}`)) nextIdx++;
@@ -1341,94 +1017,65 @@ app.registerExtension({
                 setTimeout(() => this.syncAllConnections(), 50);
             };
 
-            // 🔥 核心修改：整合左右连线信息，生成 JSON
             nodeType.prototype.syncAllConnections = function() {
                 if (this.inputs) {
                     for (let i = this.inputs.length - 1; i >= 0; i--) {
-                        if (this.inputs[i].name === "config_json") {
-                            this.removeInput(i);
-                        }
+                        if (this.inputs[i].name === "config_json") { this.removeInput(i); }
                     }
                 }
                 
                 const jsonW = this.widgets?.find(w => w.name === "config_json");
                 let oldConfig = {};
                 if (jsonW && jsonW.value) {
-                    try {
-                        oldConfig = JSON.parse(jsonW.value);
-                    } catch(e) { console.error(e); }
+                    try { oldConfig = JSON.parse(jsonW.value); } catch(e) {}
                 }
                 
                 let hasEmptyOutput = false;
                 for (let i = this.outputs.length - 1; i >= 0; i--) {
                     const output = this.outputs[i];
-                    // 此时断线已彻底完成，这里的 links 判断 100% 精准
                     if (!output.links || output.links.length === 0) {
-                        if (hasEmptyOutput) {
-                            this.removeOutput(i); // 如果已经保留过一个空插槽了，删掉其余多余的
-                        } else {
-                            hasEmptyOutput = true; // 标记我们已经留好了一个空闲插槽用于下次连线
-                        }
+                        if (hasEmptyOutput) { this.removeOutput(i); } else { hasEmptyOutput = true; }
                     }
                 }
                 
-                // 如果全连满了，自动在末尾补一个
                 if (!hasEmptyOutput) this.addOutput(`any`, "*");
-                // 重新校准剩下所有插槽的名字，统一规范化为 "any"
                 this.outputs.forEach((output, idx) => { output.name = "any"; });
                 
-                let config = {};
-                let validKeys = [];
+                let config = {}; let validKeys = [];
 
-                // 1. 扫描右侧输出
                 this.outputs.forEach((output, outIdx) => {
                     if (output.name !== "any" || !output.links || output.links.length === 0) return; 
-                    const link = app.graph.links[output.links[0]];
-                    if (!link) return;
-                    const targetNode = app.graph.getNodeById(link.target_id);
-                    if (!targetNode || !targetNode.inputs) return;
+                    const link = app.graph.links[output.links[0]]; if (!link) return;
+                    const targetNode = app.graph.getNodeById(link.target_id); if (!targetNode || !targetNode.inputs) return;
                     
                     const targetSlot = targetNode.inputs[link.target_slot];
                     const targetSlotName = targetSlot.name;
                     
-                    let pType = "STRING"; 
-                    let pOpts = {}; 
-                    let pValues = undefined;
-                    let isSupported = false;
-                    
+                    let pType = "STRING"; let pOpts = {}; let pValues = undefined; let isSupported = false;
                     const shortTitleWidget = this.widgets?.find(w => w.name === "Short Title");
                     const shortTitle = shortTitleWidget ? shortTitleWidget.value : false;
                     const displayName = shortTitle ? targetSlotName : `${targetSlotName} (${targetNode.title || targetNode.type})`;
                     
-                    // 终极通道 A
                     const nodeDefs = app.nodeDefs || app.node_defs || (app.extensionManager ? app.extensionManager.nodeDefs : null);
                     const nodeDef = (nodeDefs ? nodeDefs[targetNode.type] : null) || targetNode.constructor?.nodeData;
                     
                     if (nodeDef && nodeDef.input) {
                         let paramDef = nodeDef.input.required?.[targetSlotName] || nodeDef.input.optional?.[targetSlotName];
                         if (paramDef) {
-                            const typeInfo = paramDef[0];
-                            pOpts = paramDef[1] || {};
-                            
+                            const typeInfo = paramDef[0]; pOpts = paramDef[1] || {};
                             const optionsList = pOpts.options || pOpts.values;
                             
                             if (Array.isArray(typeInfo)) { 
-                                pType = "COMBO"; 
-                                pValues = typeInfo; 
-                                isSupported = true; // 下拉框属于合法参数
+                                pType = "COMBO"; pValues = typeInfo; isSupported = true; 
                             } else if (typeInfo === "COMBO" || (pOpts && Array.isArray(optionsList))) {
-                                pType = "COMBO";
-                                pValues = optionsList; 
-                                isSupported = true; // 下拉框属于合法参数
+                                pType = "COMBO"; pValues = optionsList; isSupported = true; 
                             }
                             else if (["INT", "FLOAT", "BOOLEAN", "STRING"].includes(String(typeInfo).toUpperCase())) {
-                                pType = String(typeInfo).toUpperCase();
-                                isSupported = true; // 常规数字、文本、开关属于合法参数
+                                pType = String(typeInfo).toUpperCase(); isSupported = true; 
                             }
                         }
                     }
                     
-                    // 备份通道 B
                     if (pType === "STRING" && pValues === undefined) {
                         const slotWidget = targetSlot ? targetSlot.widget : null;
                         const liveWidget = slotWidget || targetNode.widgets?.find(w => w.name === targetSlotName);
@@ -1436,87 +1083,102 @@ app.registerExtension({
                             const wType = String(liveWidget._origType || liveWidget.type || "").toUpperCase();
                             const widgetOptions = liveWidget.options || {};
                             const liveOptionsList = widgetOptions.options || widgetOptions.values;
-                            
-                            if (wType === "COMBO" || Array.isArray(liveOptionsList)) {
-                                pType = "COMBO";
-                                pValues = liveOptionsList;
-                                isSupported = true;
-                            }
+                            if (wType === "COMBO" || Array.isArray(liveOptionsList)) { pType = "COMBO"; pValues = liveOptionsList; isSupported = true; }
                         }
                     }
                     
-                    const tTitle = String(targetNode.title || targetNode.type).toLowerCase();
+                    const tClass = String(targetNode.type).toLowerCase();
                     const tSlot = String(targetSlotName).toLowerCase();
-                    
-                    if (pType === "COMBO" && tTitle.includes("load") && (tSlot.includes("image") || tSlot.includes("video") || tSlot.includes("file"))) {
-                        pType = "UPLOADER";
+                    if (pType === "COMBO") {
                         isSupported = true;
+                        if (tClass.includes("load") && (tSlot.includes("image") || tSlot.includes("video") || tSlot.includes("file"))) {
+                            pType = "UPLOADER";
+                        } else if ((tClass === "checkpointloader" || tClass === "checkpointloadersimple") && tSlot === "ckpt_name") {
+                            pOpts.folder = "checkpoints";
+                        } else if (tClass === "checkpointloader" && tSlot === "ckpt_name") {
+                            pOpts.folder = "checkpoints";
+                        } else if (tClass === "loraloader" && tSlot === "lora_name") {
+                            pOpts.folder = "loras";
+                        } else if (tClass === "vaeloader" && tSlot === "vae_name") {
+                            pOpts.folder = "vae";
+                        } else if (tClass === "unetloader" && tSlot === "unet_name") {
+                            pOpts.folder = "diffusion_models";
+                        } else if (tClass === "clipvisionloader" && tSlot === "clip_name") {
+                            pOpts.folder = "clip_vision";
+                        } else if (tClass === "stylemodelloader" && tSlot === "style_model_name") {
+                            pOpts.folder = "style_models";
+                        } else if (tClass.includes("cliploader") && tSlot.includes("clip_name")) {
+                            pOpts.folder = "text_encoders";
+                        } else if (tClass.includes("gligenloader") && tSlot.includes("gligen_name")) {
+                            pOpts.folder = "gligen";
+                        } else if (tClass.includes("controlnetloader") && tSlot === "control_net_name") {
+                            pOpts.folder = "controlnet";
+                        }
                     } else if (pType === "INT" && tSlot.includes("seed")) {
-                        pType = "SEED";
-                        isSupported = true;
+                        pType = "SEED"; isSupported = true;
+                    } else if (tClass.includes("lorastack") && tSlot.includes("lora_stack")) {
+                        pType = "LORA_STACK"; pOpts.folder = "loras";
+                        pOpts.min = 1; pOpts.max = 128; isSupported = true;
                     }
                     
                     if (!isSupported) {
-                        const nodeName = targetNode.title || targetNode.type;
                         const illegalType = targetSlot.type || "Unknown";
-                        
                         alert(`⚠️ Connection Rejected\n\nUnsupported connection type "${illegalType}"`);
-                        
-                        app.graph.removeLink(link.id);
-                        this.setDirtyCanvas(true, true);
-                        return; // 中断此次扫描，防止生成废旧控件
+                        app.graph.removeLink(link.id); this.setDirtyCanvas(true, true); return; 
                     }
                     
-                    // ==========================================
-                    // 🔥 核心修改 1：智能推导精确的小数位整数！
-                    // ==========================================
                     const getPrecisionFromStep = (stepVal) => {
                         if (!stepVal || Number.isInteger(stepVal)) return 0;
-                        const str = String(stepVal);
-                        const decimalIdx = str.indexOf(".");
+                        const str = String(stepVal); const decimalIdx = str.indexOf(".");
                         return decimalIdx === -1 ? 0 : str.length - decimalIdx - 1;
                     };
                     
                     let derivedPrecision = undefined;
-                    if (pOpts.precision !== undefined) {
-                        derivedPrecision = pOpts.precision;
-                    } else if (pOpts.round !== undefined) {
-                        derivedPrecision = getPrecisionFromStep(pOpts.round); // 浮点 0.01 ➡️ 整数 2 
-                    } else if (pOpts.step !== undefined) {
-                        derivedPrecision = getPrecisionFromStep(pOpts.step);  // 浮点 0.1 ➡️ 整数 1
-                    }
+                    if (pOpts.precision !== undefined) { derivedPrecision = pOpts.precision; } 
+                    else if (pOpts.round !== undefined) { derivedPrecision = getPrecisionFromStep(pOpts.round); } 
+                    else if (pOpts.step !== undefined) { derivedPrecision = getPrecisionFromStep(pOpts.step); }
                     
+                    // ✅【修改后】：增加对目标节点控件真实值的读取
                     let key = `${targetNode.title || targetNode.type}_${targetSlotName}`.replace(/[^a-zA-Z0-9_]/g, "_");
                     if (config[key]) key = `${key}_${outIdx}`;
                     
-                    const activeWidget = this.widgets?.find(w => w.name === key);
+                    // 1. 尝试从目标节点的实时 widgets 中寻找对应控件并读取 value
+                    let targetLiveValue = undefined;
+                    if (targetNode.widgets) {
+                        const targetW = targetNode.widgets.find(w => w.name === targetSlotName);
+                        if (targetW && targetW.value !== undefined) {
+                            targetLiveValue = targetW.value;
+                        }
+                    }
                     
-                    // 🔥 核心修改 2：终极防覆盖！
-                    // 如果控件还未在画布上生成（装载网页期），优先读取刚才保护的老存档里的值。
-                    // 只有老存档里也没有，才使用原节点的 default 默认值！这彻底斩断了“自我覆写”的死锁！
-                    const savedValue = (oldConfig[key] && oldConfig[key].value !== undefined) ? oldConfig[key].value : (pOpts.default !== undefined ? pOpts.default : null);
-                    const activeValue = activeWidget ? activeWidget.value : savedValue;
+                    const activeWidget = this.widgets?.find(w => w.name === key);
+                    const oldItem = oldConfig?.[key];
+                    const isSameNode = Boolean(oldItem && oldItem._node_id !== undefined && oldItem._node_id === targetNode.id);
+                    // 2. 优先级：AppBuilder已有的值 > 目标节点当前的真实值 > 节点定义的默认值
+                    let fallbackValue = targetLiveValue !== undefined ? targetLiveValue : (pOpts.default !== undefined ? pOpts.default : null);
+                    const savedValue = (isSameNode && oldConfig[key].value !== undefined) ? oldConfig[key].value : fallbackValue;
+                    const activeValue = isSameNode && activeWidget ? activeWidget.value : savedValue;
                     
                     config[key] = { 
                         type: pType, 
                         name: displayName, 
                         default: pOpts.default, 
-                        value: activeValue, // 🔥 写入被完美保护的数值
+                        value: activeValue, 
                         min: pOpts.min, 
                         max: pOpts.max, 
                         step: pOpts.step, 
                         precision: derivedPrecision, 
-                        display: pOpts.display,
+                        display: pOpts.display, 
                         values: pValues, 
                         multiline: !!pOpts.multiline, 
-                        _slot: outIdx 
+                        _slot: outIdx,
+                        _node_id: targetNode.id, // 👈【核心】：记住目标节点的真实物理 ID
+                        folder: pOpts.folder 
                     };
                     validKeys.push(key);
                 });
 
-                // 2. 追加扫描左侧输入 (Bypasser)
                 this.inputs.forEach((input, inIdx) => {
-                    // 🔥 找回递增序号：配合 bypasser_ 前缀进行过滤
                     if (!input.name.startsWith("bypasser_") || !input.link) return;
                     const link = app.graph.links[input.link];
                     const originNode = app.graph.getNodeById(link.origin_id);
@@ -1534,105 +1196,67 @@ app.registerExtension({
                     const activeValue = activeWidget ? activeWidget.value : savedValue;
                     
                     config[key] = {
-                        type: "BYPASSER", 
-                        name: bypasserName ? bypasserName : `Bypasser ${inIdx}`,
-                        match_group: groupName ? [groupName] : null,
-                        match_id: matchIds.length > 0 ? matchIds : null,
-                        default: true,
-                        value: activeValue, // 🔥 写入保护值
-                        _slot: 100 + inIdx 
+                        type: "BYPASSER", name: bypasserName ? bypasserName : `Bypasser ${inIdx}`,
+                        match_group: groupName ? [groupName] : null, match_id: matchIds.length > 0 ? matchIds : null,
+                        default: true, value: activeValue, _slot: 100 + inIdx 
                     };
                     validKeys.push(key);
                 });
 
                 if (jsonW) jsonW.value = JSON.stringify(config);
 
-                // 3. 更新画布上的 Widget
                 const hasActiveSeed = Object.values(config).some(p => p.type === "SEED");
                 const hasActiveUploader = Object.values(config).some(p => p.type === "UPLOADER");
-                
-                let seenControlAfterGenerate = false; // 🔥 种子伴生去重指示器
+                let seenControlAfterGenerate = false; 
                 
                 for (let i = this.widgets.length - 1; i >= 0; i--) {
                     const w = this.widgets[i];
+                    if (w.value === "Upload" && !w.associatedKey) { this.widgets.splice(i, 1); continue; }
                     
-                    if (w.value === "Upload" && !w.associatedKey) {
-                        this.widgets.splice(i, 1);
-                        continue;
-                    }
-                    
-                    // A. 🔥 升级：如果没有任何种子，直接清理伴生选项框；如果有多余的伴生框，通通就地抹杀！
                     if (w.name === "control_after_generate") {
-                        if (!hasActiveSeed) {
-                            this.widgets.splice(i, 1);
-                            continue;
-                        } else {
-                            if (seenControlAfterGenerate) {
-                                this.widgets.splice(i, 1); // 发现第二个副本，直接物理消灭！
-                                continue;
-                            } else {
-                                seenControlAfterGenerate = true; // 标记我们已经保留了唯一的一个
-                            }
+                        if (!hasActiveSeed) { this.widgets.splice(i, 1); continue; } 
+                        else {
+                            if (seenControlAfterGenerate) { this.widgets.splice(i, 1); continue; } 
+                            else { seenControlAfterGenerate = true; }
                         }
                     }
                     
-                    // B. 如果是上传按钮，且它关联的插槽已断开，瞬间物理拔除！
                     if (w.value === "Upload" && w.associatedKey) {
-                        if (!validKeys.includes(w.associatedKey) || !hasActiveUploader) {
-                            this.widgets.splice(i, 1);
-                            continue;
-                        }
+                        if (!validKeys.includes(w.associatedKey) || !hasActiveUploader) { this.widgets.splice(i, 1); continue; }
                     }
                     
-                    // 保护过滤名单：加入了对活动中上传按钮的保护
                     const isProtected = [
                         "config_json", "control_after_generate", "btn_app_view", 
                         "converted-widget", "hidden_parameter", "Auto Launch", "Short Title"
                     ].includes(w.name) || w.type === "hidden_parameter" || w.is_appview_button || 
-                    (w.value === "Upload" && w.associatedKey && validKeys.includes(w.associatedKey)); // 🔥 保护活跃的上传按钮
+                    (w.value === "Upload" && w.associatedKey && validKeys.includes(w.associatedKey)); 
                     
-                    if (!isProtected && !validKeys.includes(w.name)) {
-                        this.widgets.splice(i, 1);
-                    }
+                    if (!isProtected && !validKeys.includes(w.name)) { this.widgets.splice(i, 1); }
                 }
 
-                // 4. 创建或更新控件 (终极防类型锁死版)
                 Object.entries(config).forEach(([key, param]) => {
                     let defaultVal = param.value !== undefined ? param.value : param.default;
                     if (defaultVal === null || defaultVal === undefined) {
-                        if (param.type === "COMBO" || param.type === "UPLOADER") {
-                            defaultVal = param.values ? param.values[0] : "None";
-                        } else if (param.type === "INT" || param.type === "FLOAT" || param.type === "SEED") {
-                            defaultVal = 0;
-                        } else if (param.type === "BOOLEAN") {
-                            defaultVal = true;
-                        } else {
-                            defaultVal = "";
-                        }
+                        if (param.type === "COMBO" || param.type === "UPLOADER") { defaultVal = param.values ? param.values[0] : "None"; } 
+                        else if (param.type === "INT" || param.type === "FLOAT" || param.type === "SEED") { defaultVal = 0; } 
+                        else if (param.type === "BOOLEAN") { defaultVal = true; } 
+                        else { defaultVal = ""; }
                     }
                     
                     let existingW = this.widgets.find(w => w.name === key);
-                    
-                    // ==========================================
-                    // 🔥 核心防锁死锁：如果已有控件类型与最新参数类型不符，强行当场摧毁！
-                    // ==========================================
                     if (existingW) {
                         let currentWType = String(existingW.type).toUpperCase();
                         let targetWType = String(param.type).toUpperCase();
-                        
-                        // 统一类型代号映射，用于比对
                         if (targetWType === "FLOAT" || targetWType === "INT" || targetWType === "SEED") targetWType = "NUMBER";
                         if (targetWType === "BOOLEAN") targetWType = "TOGGLE";
-                        if (targetWType === "STRING") targetWType = "TEXT";
+                        if (targetWType === "STRING" || targetWType === "LORA_STACK") targetWType = "TEXT";
                         if (targetWType === "UPLOADER") targetWType = "COMBO";
                         
-                        // 如果发现类型发生了冲突（比如数字框/文本框现在应该是下拉框了）
                         if (currentWType !== targetWType && !(currentWType === "CONVERTED-WIDGET" && targetWType === "NUMBER")) {
                             const wIdx = this.widgets.indexOf(existingW);
                             if (wIdx !== -1) {
                                 if (existingW.onRemove) existingW.onRemove();
-                                this.widgets.splice(wIdx, 1); // 强行从队列中抹除！
-                                existingW = null; // 置空，使其能够完美进入下面的 !existingW 新建分支！
+                                this.widgets.splice(wIdx, 1); existingW = null; 
                             }
                         }
                     }
@@ -1641,13 +1265,9 @@ app.registerExtension({
                         existingW = setupUploaderWidget(this, key, param, defaultVal, validKeys);
                         if (existingW) {
                             const origCallback = existingW.callback;
-                            existingW.callback = (v) => {
-                                saveWidgetValueToConfig(this, key, v);
-                                if (origCallback) origCallback(v);
-                            };
+                            existingW.callback = (v) => { saveWidgetValueToConfig(this, key, v); if (origCallback) origCallback(v); };
                         }
                     } else if (!existingW) {
-                        // 首次创建或被摧毁重建分支
                         if (param.type === "BYPASSER") {
                             existingW = this.addWidget("toggle", key, true, (v) => {
                                 const currentJsonW = this.widgets?.find(w => w.name === "config_json");
@@ -1655,16 +1275,12 @@ app.registerExtension({
                                     try {
                                         const currentConfig = JSON.parse(currentJsonW.value);
                                         const currentParam = currentConfig[key];
-                                        if (currentParam) {
-                                            applyBypasser(v, currentParam, app.graph);
-                                        }
-                                    } catch(e) { console.error(e); }
+                                        if (currentParam) { applyBypasser(v, currentParam, app.graph); }
+                                    } catch(e) {}
                                 }
-                                saveWidgetValueToConfig(this, key, v); // 🔥 归档
+                                saveWidgetValueToConfig(this, key, v); 
                             }, {});
-                            setTimeout(() => {
-                                if (existingW) applyBypasser(existingW.value, param, app.graph);
-                            }, 100);
+                            setTimeout(() => { if (existingW) applyBypasser(existingW.value, param, app.graph); }, 100);
                         } else if (param.type === "SEED") {
                             existingW = ComfyWidgets.INT(this, key, ["INT", { 
                                 default: defaultVal, min: param.min ?? 0, max: param.max ?? 0xffffffffffffffff, control_after_generate: true 
@@ -1675,79 +1291,57 @@ app.registerExtension({
                         } else if (param.type === "INT" || param.type === "FLOAT") {
                             const isInt = param.type === "INT";
                             const step = param.step ?? (isInt ? 1 : 0.1);
-                            
-                            // ComfyUI 官方标准：INT 精度为 0，FLOAT 默认精度为 3
                             const prec = param.precision ?? (isInt ? 0 : 3);
-                            
-                            // 判定是否渲染为滑块
                             const isSlider = param.display === "slider" || param.slider === true;
                             const hasBounds = param.min !== undefined && param.max !== undefined;
                             const useSlider = isSlider && hasBounds;
-                            
-                            const minVal = param.min ?? -999999;
-                            const maxVal = param.max ?? 999999;
-                            
-                            // 🔥 终极黑魔法：普通数字框必须乘以 10 抵消 LiteGraph 底层 Bug，滑块则用原值！
+                            const minVal = param.min ?? -999999; const maxVal = param.max ?? 999999;
                             const widgetStep = useSlider ? step : step * 10;
                             
                             existingW = this.addWidget(useSlider ? "slider" : "number", key, defaultVal, (v)=>{
                                 saveWidgetValueToConfig(this, key, v);
-                            }, { 
-                                min: minVal, max: maxVal, step: widgetStep, precision: prec 
-                            });
+                            }, { min: minVal, max: maxVal, step: widgetStep, precision: prec });
+                        } else if (param.type === "BOOLEAN") {
+                            existingW = this.addWidget("toggle", key, Boolean(defaultVal ?? true), (v) => {
+                                saveWidgetValueToConfig(this, key, v);
+                            }, {});
+                        } else if (param.type === "LORA_STACK") {
+                            existingW = this.addWidget("text", key, defaultVal || "[]", (v) => saveWidgetValueToConfig(this, key, v), { read_only: true });
+                            if (existingW) {
+                                existingW.disabled = true;
+                                existingW.options = existingW.options || {};
+                                existingW.options.read_only = true;
+                            }
                         } else {
                             existingW = this.addWidget("text", key, defaultVal, (v) => saveWidgetValueToConfig(this, key, v), {});
                         }
                         existingW.label = param.name; 
                     } else {
-                        // 已存在且类型相符的更新分支
                         existingW.label = param.name;
                         existingW.callback = (v) => saveWidgetValueToConfig(this, key, v);
                     }
                 });
-                // ==========================================
-                // 🔥 核心修改：对 widgets 数组重新排序，强制视觉顺序与连线顺序100%对齐！
-                // ==========================================
-                const staticWidgets = this.widgets.filter(w => 
-                    w.name === "config_json" ||
-                    w.name === "converted-widget" ||
-                    w.type === "hidden_parameter" ||
-                    w.is_appview_button ||
-                    w.name === "Auto Launch" ||       // 🔥 强制留在最顶部
-                    w.name === "Short Title"
-                );
                 
+                const staticWidgets = this.widgets.filter(w => 
+                    w.name === "config_json" || w.name === "converted-widget" || w.type === "hidden_parameter" || w.is_appview_button || w.name === "Auto Launch" || w.name === "Short Title"
+                );
                 const sortedDynamicWidgets = [];
                 Object.keys(config).forEach(key => {
                     const w = this.widgets.find(wd => wd.name === key);
                     if (w) {
                         sortedDynamicWidgets.push(w);
-                        
-                        // 种子伴随
                         if (config[key].type === "SEED") {
                             const companion = this.widgets.find(c => c.name === "control_after_generate");
                             if (companion) sortedDynamicWidgets.push(companion);
                         }
-                        
-                        // 🔥 重点：上传伴随。一旦发现 Uploader 控件，立刻让它的专属 Upload 按钮紧贴其下！
                         if (config[key].type === "UPLOADER") {
                             const uploadBtn = this.widgets.find(u => u.value === "Upload" && u.associatedKey === key);
                             if (uploadBtn) sortedDynamicWidgets.push(uploadBtn);
                         }
                     }
                 });
-                
-                // 防止漏网之鱼（防御性代码）
-                const remainingWidgets = this.widgets.filter(w => 
-                    !staticWidgets.includes(w) && 
-                    !sortedDynamicWidgets.includes(w)
-                );
-                
-                // 🔥 重新组装底层的 widgets 数组，刷新视觉渲染顺序！
+                const remainingWidgets = this.widgets.filter(w => !staticWidgets.includes(w) && !sortedDynamicWidgets.includes(w));
                 this.widgets = [...staticWidgets, ...sortedDynamicWidgets, ...remainingWidgets];
-                
-                // 计算高度并刷新画布
-                //this.setSize(this.computeSize());
                 this.setDirtyCanvas(true, true);
             };
         }

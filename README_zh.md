@@ -1,5 +1,5 @@
 # ComfyUI-AppBuilder 
-将任意工作流转换为更易于使用的 WebApp 界面且无需启用 Node2.0  
+将任意工作流转换为更易于使用的网页App, 且不依赖于Node2.0  
 **[[📃English](./README.md)]**   
 
 ## 预览

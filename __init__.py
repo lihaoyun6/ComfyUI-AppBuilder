@@ -4,8 +4,11 @@ import json
 import logging
 import collections
 import folder_paths
+import comfy.sd
+import comfy.utils
 
 from aiohttp import web
+from nodes import LoraLoader
 from server import PromptServer
 
 class AppBuilder:
@@ -43,6 +46,7 @@ class AppBuilderBypasser:
     RETURN_NAMES = ("bypasser",)
     FUNCTION = "main"
     CATEGORY = "AppBuilder"
+    DESCRIPTION = "Turn your workflow into an easy-to-use web application."
     
     def main(self, **kwargs):
         return ()
@@ -67,7 +71,7 @@ class AppBuilderAdv:
     RETURN_NAMES = ("parameters",)
     FUNCTION = "execute"
     CATEGORY = "AppBuilder"
-    DESCRIPTION = "Generate custom control panel and application view."
+    DESCRIPTION = "Turn your workflow into an easy-to-use web application."
     
     @classmethod
     def VALIDATE_INPUTS(cls, **kwargs):
@@ -135,6 +139,80 @@ class ParametersUnpacker:
         except Exception:
             raise
 
+class AppBuilderLoraStack:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "lora_stack": ("STRING", {"default": '[{"lora_name":"None","strength":1.0,"enabled":true}]'}),
+            },
+            "optional": {
+                "model": ("MODEL",),
+                "clip": ("CLIP",),
+            }
+        }
+    
+    RETURN_TYPES = ("MODEL", "CLIP")
+    RETURN_NAMES = ("MODEL", "CLIP")
+    FUNCTION = "apply_lora_stack"
+    CATEGORY = "AppBuilder"
+    
+    def apply_lora_stack(self, lora_stack, model=None, clip=None):
+        try:
+            loras = json.loads(lora_stack)
+        except Exception:
+            loras = []
+            
+        if not isinstance(loras, list):
+            loras = []
+            
+        current_model = model
+        current_clip = clip
+        
+        lora_loader = LoraLoader()
+        
+        for lora_info in loras:
+            if not isinstance(lora_info, dict):
+                continue
+            
+            # 1. 过滤未开启的 Lora
+            if not lora_info.get("enabled", True):
+                continue
+            
+            lora_name = lora_info.get("lora_name")
+            if not lora_name or lora_name == "None":
+                continue
+            
+            # 2. 提取强度 (学习 rgthree：支持 Model 强度与 CLIP 强度解耦)
+            strength_model = float(lora_info.get("strength", 1.0))
+            # 如果前端没传 strength_clip，默认使用与 strength_model 相同的值
+            strength_clip = float(lora_info.get("strength_clip", strength_model))
+            
+            # 如果强度全部为 0，跳过融合以节省算力
+            if strength_model == 0 and strength_clip == 0:
+                continue
+            
+            # 3. 校验文件是否存在
+            lora_path = folder_paths.get_full_path("loras", lora_name)
+            if not lora_path:
+                print(f"[AppBuilderLoraStack] Warning: LoRA file '{lora_name}' not found!")
+                continue
+            
+            # 4. 调用官方 LoraLoader 执行安全融合
+            try:
+                if current_model is not None or current_clip is not None:
+                    current_model, current_clip = lora_loader.load_lora(
+                        current_model, 
+                        current_clip, 
+                        lora_name, 
+                        strength_model, 
+                        strength_clip
+                    )
+            except Exception as e:
+                print(f"[AppBuilderLoraStack] Error loading LoRA '{lora_name}': {e}")
+                
+        return (current_model, current_clip)
+    
 @PromptServer.instance.routes.get("/appbuilder/ls/{folder}")
 async def get_models_list(request):
     folder = request.match_info.get("folder")
@@ -143,10 +221,6 @@ async def get_models_list(request):
         return web.json_response(files)
     return web.json_response([], status=404)
 
-
-# --------------------------------------------------
-# 日志处理中心：高速缓存队列
-# --------------------------------------------------
 log_buffer = collections.deque(maxlen=420)
 log_counter = 0 
 
@@ -158,7 +232,6 @@ class ComfyUIAppViewLogHandler(logging.Handler):
             if msg.strip():
                 log_counter += 1
                 log_buffer.append((log_counter, msg)) 
-                
                 try:
                     PromptServer.instance.send_sync("appbuilder_log", {"id": log_counter, "text": msg})
                 except Exception:
@@ -166,35 +239,24 @@ class ComfyUIAppViewLogHandler(logging.Handler):
         except Exception:
             self.handleError(record)
             
-# 挂载标准 Logger 监听
 root_logger = logging.getLogger()
 log_handler = ComfyUIAppViewLogHandler()
 log_handler.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 root_logger.addHandler(log_handler)
 
-# --------------------------------------------------
-# 标准输出重定向器：专司捕捉进度条 (tqdm)
-# --------------------------------------------------
 class LogStreamWrapper:
     def __init__(self, original_stream):
         self.original_stream = original_stream
         
     def write(self, data):
         global log_counter
-        # 1. 保留原本输出
         self.original_stream.write(data)
-        
-        # 🔥 核心修改：利用 \r (回车符) 物理特征，100% 降维打击、精准拦截所有进度条碎片！
         is_progress = "\r" in data or "%|" in data or "it/s" in data or "s/it" in data
-        
         if is_progress:
-            # 去除回车符，提取出干净的进度条文本
             clean_data = data.replace("\r", "").strip()
             if clean_data:
                 log_counter += 1
                 log_buffer.append((log_counter, clean_data))
-                
-                # 直接通过 WebSocket 流式推送到前端
                 try:
                     PromptServer.instance.send_sync("appbuilder_log", {"id": log_counter, "text": clean_data})
                 except Exception:
@@ -206,10 +268,6 @@ class LogStreamWrapper:
 sys.stdout = LogStreamWrapper(sys.stdout)
 sys.stderr = LogStreamWrapper(sys.stderr)
 
-
-# --------------------------------------------------
-# 增量日志 HTTP 获取路由 (保留作为打开网页时的“历史恢复通道”)
-# --------------------------------------------------
 @PromptServer.instance.routes.get("/appbuilder/logs")
 async def get_captured_logs(request):
     try:
@@ -218,14 +276,12 @@ async def get_captured_logs(request):
         after_id = 0
         
     new_logs = []
-    # 过滤出所有大于 after_id 的新行返回给前端
     for log_id, line in log_buffer:
         if log_id > after_id:
             new_logs.append({"id": log_id, "text": line})
             
     return web.json_response(new_logs)
 
-# 解析 ComfyUI 根目录下的 user/default/workflows/app 目录
 def get_app_workflows_dir():
     base_dir = os.path.join(folder_paths.get_user_directory(), "default")
     app_dir = os.path.join(base_dir, "workflows", "app")
@@ -233,12 +289,10 @@ def get_app_workflows_dir():
         os.makedirs(app_dir, exist_ok=True)
     return app_dir
 
-# 路由 1：获取工作流列表，并输出其名字、大小、修改时间
 @PromptServer.instance.routes.get("/appbuilder/workflows")
 async def list_app_workflows(request):
     try:
         target_dir = get_app_workflows_dir()
-        print(target_dir)
         files = []
         for f in os.listdir(target_dir):
             if f.endswith(".json"):
@@ -246,19 +300,17 @@ async def list_app_workflows(request):
                 stat = os.stat(full_path)
                 files.append({
                     "name": f,
-                    "mtime": stat.st_mtime, # 用于前端时间排序
+                    "mtime": stat.st_mtime, 
                     "size": stat.st_size
                 })
         return web.json_response(files)
     except Exception as e:
         return web.json_response([], status=500)
     
-# 路由 2：根据文件名，安全、无损地返回 JSON 树
 @PromptServer.instance.routes.get("/appbuilder/workflows/get")
 async def get_app_workflow_content(request):
     try:
         filename = request.query.get("file")
-        # 基础防跨目录攻击过滤
         if not filename or ".." in filename or "/" in filename or "\\" in filename:
             return web.json_response({"error": "Invalid filename"}, status=400)
         
@@ -278,6 +330,7 @@ NODE_CLASS_MAPPINGS = {
     "AppBuilderBypasser": AppBuilderBypasser,
     "AppBuilderAdv": AppBuilderAdv,
     "ParametersUnpacker": ParametersUnpacker,
+    "AppBuilderLoraStack": AppBuilderLoraStack,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -285,6 +338,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "AppBuilderBypasser": "AppBuilder Bypasser",
     "AppBuilderAdv": "AppBuilder (Advanced)",
     "ParametersUnpacker": "Parameters Unpacker",
+    "AppBuilderLoraStack": "AppBuilder Lora Stack",
 }
 
 WEB_DIRECTORY = "./web"

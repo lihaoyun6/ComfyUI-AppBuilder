@@ -186,12 +186,12 @@
     </style>
     <script>
         function syncThemeWithAppView() {
-            const savedTheme = localStorage.getItem('appview_theme') || 'system'; // 默认为 system
+            const savedTheme = localStorage.getItem('appview_theme') || 'system';
             let activeTheme = savedTheme;
             
-            // 如果是跟随系统，在此瞬间换算
             if (savedTheme === 'system') {
-                activeTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                const topWin = window.top || window;
+                return topWin.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             }
             
             if (activeTheme === 'light') {
@@ -201,18 +201,23 @@
             }
         }
         
-        // 1. 初始化
         syncThemeWithAppView();
         
-        // 2. 监听跨 Tab 属性变动
         window.addEventListener('storage', (e) => {
             if (e.key === 'appview_theme') syncThemeWithAppView();
         });
         
-        // 3. 🔥 核心：大厅也监听系统变动，实现全生态链无缝换色！
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
             const savedTheme = localStorage.getItem('appview_theme') || 'system';
             if (savedTheme === 'system') syncThemeWithAppView();
+        });
+
+        // 监听动态解锁消息
+        window.addEventListener('message', (e) => {
+            if (e.data && e.data.type === "hide_splash") {
+                const splash = document.getElementById('splash-screen');
+                if (splash) splash.style.display = "none";
+            }
         });
     </script>
 </head>
@@ -291,11 +296,10 @@
                     <span class="item-size">${sizeKB}</span>
                 `;
                 el.onclick = () => {
-                    window.parent.postMessage({ type: "load_workflow", filename: item.name }, "*");
+                    // 显示遮挡层，移除定时器，等待后端加载完成主动通知解除
                     const splash = document.getElementById('splash-screen');
-                    
                     splash.style.display = "flex";
-                    setTimeout(() => { splash.style.display = "none"; }, 2000);
+                    window.parent.postMessage({ type: "load_workflow", filename: item.name }, "*");
                 };
                 container.appendChild(el);
             });

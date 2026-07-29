@@ -181,7 +181,7 @@
         .btn-save { background: var(--primary); color: #fff; }
         .btn-save:hover { background: #559ceb; }
         
-        /* 👇【新增：RAW 纯文本视图容器与 textarea 样式表】 */
+        /* RAW 纯文本视图容器与 textarea 样式表 */
         #raw-mode-container {
             display: none;
             flex: 1;
@@ -216,7 +216,6 @@
 
     <!-- 中部 -->
     <div class="config-main">
-        <!-- 👇【修改】：将原有左侧选择列表和右侧卡片组，用 visual-mode-container 统一包裹 -->
         <div id="visual-mode-container" style="display: flex; flex: 1; overflow: hidden; width: 100%;">
             <div class="left-selector">
                 <div class="selector-title" data-i18n="add_controls">Add Controls</div>
@@ -229,13 +228,14 @@
                 <button class="btn-type-add" data-i18n="type_boolean" onclick="addNewControl('BOOLEAN')">🔘 BOOLEAN</button>
                 <button class="btn-type-add" data-i18n="type_bypasser" onclick="addNewControl('BYPASSER')">🔌 BYPASSER</button>
                 <button class="btn-type-add" data-i18n="type_uploader" onclick="addNewControl('UPLOADER')">📤 UPLOADER</button>
+                <!-- 👇 【这里新增了 LORA STACK 按钮】 -->
+                <button class="btn-type-add" data-i18n="type_lorastack" onclick="addNewControl('LORA_STACK')">📚 LORA STACK</button>
                 <button class="btn-type-add" data-i18n="type_button" onclick="addNewControl('BUTTON')">🖲️ BUTTON</button>
                 <button class="btn-type-add" data-i18n="type_previewer"onclick="addNewControl('PREVIEWER')">🖼️ PREVIEWER</button>
             </div>
             <div class="right-cards-list" id="cards-container"></div>
         </div>
     
-        <!-- 👇【新增】：RAW 纯文本 JSON 编辑器挂载点 -->
         <div id="raw-mode-container">
             <textarea id="raw-textarea" placeholder="{ }"></textarea>
         </div>
@@ -252,8 +252,8 @@
         let nodeId = null;
         let configList = []; 
         let translations = {}; 
-        let isRawMode = false; // 当前是否处于 RAW 视图状态
-        let isLivePreviewActive = false; // 全局追踪虚拟预览器的激活状态
+        let isRawMode = false;
+        let isLivePreviewActive = false;
 
         function t(key, defaultText, ...args) {
             let text = translations[key] || defaultText;
@@ -312,11 +312,9 @@
                     const jsonWidget = parentNode.widgets.find(w => w.name === "config_json");
                     const currentConfig = JSON.parse(jsonWidget ? jsonWidget.value || "{}" : "{}");
                     
-                    // 读取主页面上 live_preview 原生控件的当前开启状态
                     const livePreviewWidget = parentNode.widgets.find(w => w.name === "live_preview");
                     isLivePreviewActive = livePreviewWidget ? livePreviewWidget.value === true : false;
                     
-                    // 👈【核心转换】：在从主界面加载时，如果类型为 COMBO 且存在 folder，内部重构为独立的 FILELIST
                     configList = Object.entries(currentConfig).map(([key, params]) => {
                         let uiType = (params.type || "STRING").toUpperCase();
                         if (uiType === "COMBO" && params.folder) {
@@ -329,10 +327,9 @@
                         };
                     });
                     
-                    // 👇【新增】：若主页面开启了实时预览，强行向列表中追加一个虚拟的 PREVIEWER 节点
                     if (isLivePreviewActive) {
                         configList.push({
-                            key: "live_preview_ctrl", // 虚拟 Key
+                            key: "live_preview_ctrl",
                             type: "PREVIEWER",
                             params: { type: "PREVIEWER", name: "LIVE PREVIEW", tooltip: "" }
                         });
@@ -358,24 +355,20 @@
             const rawTextarea = document.getElementById('raw-textarea');
             
             if (!isRawMode) {
-                // 👁️ 可视化 -> 💻 RAW Mode
-                packCurrentInputToState(); // 1. 先将表单最新值打包到内存
-                
-                // 记录虚拟 Previewer 目前是否被加入在内，以便后续往返还原
+                packCurrentInputToState();
                 hasPreviewerActive = configList.some(item => item.type === "PREVIEWER");
                 
                 const compiled = {};
                 configList.forEach(item => {
-                    if (item.type === "PREVIEWER") return; // 过滤虚拟控件
+                    if (item.type === "PREVIEWER") return; 
                     
                     const finalParams = { ...item.params };
                     if (item.type === "FILELIST") {
-                        finalParams.type = "COMBO"; // 输出归一化
+                        finalParams.type = "COMBO"; 
                     }
                     compiled[item.key] = finalParams;
                 });
                 
-                // 2. 将编译后的标准 JSON 写入文本域并切页
                 rawTextarea.value = JSON.stringify(compiled, null, 2);
                 visualContainer.style.display = 'none';
                 rawContainer.style.display = 'flex';
@@ -383,12 +376,9 @@
                 btn.innerText = t('visual_mode', 'Visual Mode');
                 isRawMode = true;
             } else {
-                // 💻 RAW Mode -> 👁️ 可视化
                 try {
-                    // 1. 尝试解析并校正 JSON，写错了任何逗号都会被此处捕获拦截
                     const parsed = JSON.parse(rawTextarea.value || "{}");
                     
-                    // 2. 将 RAW JSON 重新映射解析还原为带索引的 configList
                     const tempConfigList = Object.entries(parsed).map(([key, params]) => {
                         let uiType = (params.type || "STRING").toUpperCase();
                         if (uiType === "COMBO" && params.folder) {
@@ -397,7 +387,6 @@
                         return { key: key, type: uiType, params: { ...params } };
                     });
                     
-                    // 3. 完美召回：如果切换前曾带有预览器，往返重绘时将其自动塞回最末尾
                     if (hasPreviewerActive) {
                         tempConfigList.push({
                             key: "live_preview_ctrl",
@@ -407,22 +396,19 @@
                     }
                     
                     configList = tempConfigList;
-                    renderCards(); // 根据新的 configList 渲染卡片
+                    renderCards(); 
                     
-                    // 4. 切回可视化
                     rawContainer.style.display = 'none';
                     visualContainer.style.display = 'flex';
                     
                     btn.innerText = t('raw_mode', 'RAW Mode');
                     isRawMode = false;
                 } catch (err) {
-                    // 如果 JSON 有语法错误，拒绝切回并亮起红字警报
                     alert(t('invalid_json_alert', 'Invalid JSON format! Please correct it. Error:\n{0}', err.message));
                 }
             }
         }
 
-        // 渲染方法（去除了所有行内的硬编码中文，改用纯英默认）
         function renderCards() {
             const container = document.getElementById('cards-container');
             container.innerHTML = '';
@@ -506,14 +492,6 @@
                         `;
                     }
                 }
-                /*else if (type === "SEED") {
-                    grid.innerHTML += `
-                        <div class="form-item">
-                            <label>${t('default_seed', 'Default Seed')}</label>
-                            <input type="number" class="input-default" value="${item.params.default ?? 0}">
-                        </div>
-                    `;
-                }*/
                 else if (type === "STRING") {
                     grid.innerHTML += `
                         <div class="form-item" style="flex-direction:row; align-items:center; gap:8px;">
@@ -530,7 +508,6 @@
                         </div>
                     `;
                 }
-                // 👈【COMBO 与 FILELIST 彻底解耦展示】：COMBO 界面上只允许手写 dropdown 内容
                 else if (type === "COMBO") {
                     const valuesStr = Array.isArray(item.params.values) ? item.params.values.join('\n') : (item.params.values || "Option1\nOption2");
                     grid.innerHTML += `
@@ -544,7 +521,6 @@
                         </div>
                     `;
                 }
-                // 👈【FILELIST 独立展示】：界面上只显示 文件夹输入，不再显示下拉框选项文本域
                 else if (type === "FILELIST") {
                     grid.innerHTML += `
                         <div class="form-item">
@@ -611,8 +587,16 @@
                                 <option value="image" ${item.params.media === 'image' ? 'selected' : ''}>${t('uploader_image', 'Image')}</option>
                                 <option value="video" ${item.params.media === 'video' ? 'selected' : ''}>${t('uploader_video', 'Video')}</option>
                                 <option value="audio" ${item.params.media === 'audio' ? 'selected' : ''}>${t('uploader_audio', 'Audio')}</option>
-                                <!--<option value="all" ${item.params.media === 'all' ? 'selected' : ''}>${t('uploader_all', 'All Formats')}</option>-->
                             </select>
+                        </div>
+                    `;
+                }
+                // 👇 【这里新增了 LORA_STACK 在卡片区的渲染】
+                else if (type === "LORA_STACK") {
+                    grid.innerHTML += `
+                        <div class="form-item">
+                            <label>${t('lora_folder', 'Target Folder (Fixed to loras)')}</label>
+                            <input type="text" class="input-folder" value="loras" readonly style="background: #222; color: #888; cursor: not-allowed;">
                         </div>
                     `;
                 }
@@ -678,6 +662,9 @@
                 defaultParams.default = true;
             } else if (type === "UPLOADER") {
                 defaultParams.media = "image";
+            } else if (type === "LORA_STACK") { // 👇【给 LORA_STACK 设定默认值】
+                defaultParams.default = '[{"lora_name":"None","strength":1.0,"enabled":true}]';
+                defaultParams.folder = "loras";
             } else if (type === "PREVIEWER") {
                 defaultParams.name = "LIVE PREVIEW";
             }
@@ -710,13 +697,11 @@
             renderCards();
         }
 
-        // 👈【核心修复】：打包表单数值到状态机（加入虚拟控件拦截与全量可选链防崩溃保护）
         function packCurrentInputToState() {
             const cards = document.querySelectorAll('.config-card');
             configList = Array.from(cards).map((card, idx) => {
                 const type = card.getAttribute('data-type');
                 
-                // 1. 👈 如果是虚拟控件 PREVIEWER，它没有输入框，直接原样返回固定的安全结构
                 if (type === "PREVIEWER") {
                     return { 
                         key: "live_preview_ctrl", 
@@ -725,23 +710,19 @@
                     };
                 }
 
-                // 2. 安全读取公用基础字段（采用 ?. 安全链，找不到就为空，绝不报错）
                 const keyInput = card.querySelector('.input-key');
                 const nameInput = card.querySelector('.input-name');
                 const tooltipInput = card.querySelector('.input-tooltip');
 
                 const key = keyInput ? keyInput.value.trim() : `control_${idx}`;
                 
-                // 3. 提取历史参数作为底层继承基础
                 const oldParams = (configList[idx] && configList[idx].params) ? configList[idx].params : {};
                 const params = { ...oldParams };
 
-                // 4. 用 UI 上的最新值覆盖
                 params.type = type;
                 params.name = nameInput ? nameInput.value.trim() : "";
                 params.tooltip = tooltipInput ? tooltipInput.value.trim() : "";
 
-                // 根据类型安全读取专属字段
                 if (type === "INT" || type === "FLOAT") {
                     params.min = Number(card.querySelector('.input-min')?.value || 0);
                     params.max = Number(card.querySelector('.input-max')?.value || 100);
@@ -774,7 +755,6 @@
                     const mTitle = card.querySelector('.input-match-title')?.value?.trim() || "";
                     const mGroup = card.querySelector('.input-match-group')?.value?.trim() || "";
                     
-                    // 赋值并清理旧数据，防止空值残留
                     if (mId) params.match_id = mId.split(',').map(v => v.trim()).filter(v => v);
                     else delete params.match_id;
                     
@@ -785,43 +765,39 @@
                     else delete params.match_group;
                 } else if (type === "UPLOADER") {
                     params.media = card.querySelector('.input-media')?.value || "image";
+                } else if (type === "LORA_STACK") { // 👇【打包时获取固定数据】
+                    params.folder = "loras";
                 }
 
                 return { key, type, params };
             });
         }
 
-        // 👈【核心修改】：支持 RAW 视图直通写盘的保存函数，100% 保护你在 JSON 里手写的所有高级自定义键值对（如 class）
         function saveConfigToParent() {
-            // 1. 如果用户是在 💻 RAW 模式下直接点击了“保存”
             if (isRawMode) {
                 const rawTextarea = document.getElementById('raw-textarea');
                 try {
-                    // 强行尝试解析校验（如果写错了逗号等会在此时弹窗警报，绝对不丢失文本）
                     const parsed = JSON.parse(rawTextarea.value || "{}");
                     
-                    // 👈 核心：越过卡片打包，直接向主界面节点的 config_json 注入解析好的 RAW 成果
                     if (window.parent && window.parent.comfyApp && nodeId) {
                         const parentNode = window.parent.comfyApp.graph.getNodeById(nodeId);
                         if (parentNode) {
                             
-                            // 检查 RAW 文本中是否保留/设置了虚拟的 PREVIEWER 选项并进行状态同步
                             let hasPreviewer = false;
                             const compiled = {};
                             
                             for (const [key, params] of Object.entries(parsed)) {
                                 if (params.type === "PREVIEWER") {
                                     hasPreviewer = true;
-                                    continue; // 过滤虚拟控件
+                                    continue; 
                                 }
                                 const finalParams = { ...params };
                                 if (params.type === "FILELIST") {
-                                    finalParams.type = "COMBO"; // 输出归一化
+                                    finalParams.type = "COMBO"; 
                                 }
                                 compiled[key] = finalParams;
                             }
 
-                            // 写入 live_preview 同步
                             const livePreviewWidget = parentNode.widgets.find(w => w.name === "live_preview");
                             if (livePreviewWidget) {
                                 livePreviewWidget.value = hasPreviewer;
@@ -837,7 +813,6 @@
                         }
                     }
 
-                    // 成功直接保存，销毁弹窗并提早返回（Bypass 掉底下的 packCurrentInput 流程）
                     if (window.parent.closeConfigOverlay) {
                         window.parent.closeConfigOverlay();
                     }
@@ -848,7 +823,6 @@
                 }
             }
 
-            // 2. 如果用户是在 👁️ 可视化视图下点击的保存，则走常规的卡片打包路径
             packCurrentInputToState();
 
             const compiled = {};
