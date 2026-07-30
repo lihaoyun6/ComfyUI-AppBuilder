@@ -64,7 +64,6 @@ async function setupAPI() {
     window.comfyApp = app;
     window.comfyApi = api;
     
-    // 🔥 【核心修改 1】：轮询等待 ComfyUI 完全渲染画布后，再注入大厅
     function tryInjectManager() {
         if (isMobile()) {
             if (document.querySelector(".comfy-menu") && app.graph) {
@@ -169,7 +168,6 @@ async function setupAPI() {
                         } catch (err) {}
                     }, 500); 
                     
-                    // 🔥 【核心修改 2】：完成后主动消除弹窗，如果遇到非 App 流程，也会在 alert 点击确认后消失
                     setTimeout(() => {
                         const firstBuilder = app.graph.findNodesByType("AppBuilder")[0] || app.graph.findNodesByType("AppBuilderAdv")[0];
                         const manager = document.getElementById("app-manager-iframe");
@@ -181,7 +179,6 @@ async function setupAPI() {
                             }
                         } else {
                             alert(i18n.not_app);
-                            // alert 是阻塞的，用户点完确认后才会往下走并解除遮挡！
                             if (manager && manager.contentWindow) manager.contentWindow.postMessage({ type: "hide_splash" }, "*");
                         }
                     }, 600); 
@@ -694,7 +691,6 @@ app.registerExtension({
                                 if (widget.inputEl && params.placeholder) widget.inputEl.placeholder = params.placeholder;
                             } else { widget = this.addWidget("text", key, val || "", (v) => saveWidgetValueToConfig(this, key, v), {}); }
                         } else if (type === "LORA_STACK") {
-                            // 💾【核心修复】：传入 saveWidgetValueToConfig 回调，将数据实时写入 config_json 的 value 字段！
                             widget = this.addWidget("text", key, val || "[]", (v) => saveWidgetValueToConfig(this, key, v), { read_only: true });
                             if (widget) {
                                 widget.disabled = true;
@@ -787,66 +783,122 @@ app.registerExtension({
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
                 this.outputs = []; this.size = [200, 40];
+                
+                // 🔥【修复的核心方法】：智能同步并保持连线完好
                 this.syncFromUpstream = function() {
+                    // 如果根本没有输入连线，清空输出槽
                     if (!this.inputs || !this.inputs[0].link) {
-                        if (this.outputs) { for (let i = 0; i < this.outputs.length; i++) this.disconnectOutput(i); }
-                        this.outputs = []; this.computeSize(); this.setDirtyCanvas(true, true); return;
+                        if (this.outputs && this.outputs.length > 0) { 
+                            for (let i = 0; i < this.outputs.length; i++) this.disconnectOutput(i); 
+                            this.outputs = []; this.computeSize(); this.setDirtyCanvas(true, true); 
+                        }
+                        return;
                     }
-                    const linkId = this.inputs[0].link; const link = app.graph.links[linkId]; if (!link) return;
-                    const upstreamNode = app.graph.getNodeById(link.origin_id); if (!upstreamNode || upstreamNode.type !== "AppBuilderAdv") return;
-                    const jsonWidget = upstreamNode.widgets.find(w => w.name === "config_json"); if (!jsonWidget) return;
                     
+                    const linkId = this.inputs[0].link; 
+                    const link = app.graph ? app.graph.links[linkId] : null; 
+                    if (!link) return; // 连线还没加载完成，直接返回，绝不断开已有的输出！
+
+                    const upstreamNode = app.graph.getNodeById(link.origin_id); 
+                    if (!upstreamNode || upstreamNode.type !== "AppBuilderAdv") return;
+
+                    const jsonWidget = upstreamNode.widgets?.find(w => w.name === "config_json"); 
+                    if (!jsonWidget || !jsonWidget.value) return; // 上游节点尚未构建完毕，直接返回！
+
                     let config;
                     try { config = JSON.parse(jsonWidget.value || "{}"); } catch (e) { return; }
                     const entries = Object.entries(config).slice(0, 32);
                     const outputEntries = entries.filter(([k, p]) => {
                         const t = (p.type || "STRING").toUpperCase(); return t !== "BUTTON" && t !== "BYPASSER";
                     });
-                    
+
+                    // 校验现有输出槽是否和上游配置完全一致
+                    const currentOutputs = this.outputs || [];
+                    let needsUpdate = currentOutputs.length !== outputEntries.length;
+                    if (!needsUpdate) {
+                        for (let i = 0; i < outputEntries.length; i++) {
+                            const [key] = outputEntries[i];
+                            if (currentOutputs[i].name !== key) {
+                                needsUpdate = true; break;
+                            }
+                        }
+                    }
+
+                    // 💡【核心修复点】：如果输出槽数量和 Key 都没变（即常规加载工作流），只更新标签和类型，绝不销毁/断开连线！
+                    if (!needsUpdate) {
+                        outputEntries.forEach(([key, params], idx) => {
+                            const baseType = (params.type || "*").toUpperCase();
+                            let outputClass;
+                            if (params.class) { outputClass = String(params.class).toUpperCase() } 
+                            else if (baseType === "INPUT") { outputClass = "*"; } 
+                            else if (baseType === "SEED") { outputClass = "INT"; } 
+                            else if (baseType === "UPLOADER") { outputClass = "COMBO"; } 
+                            else if (baseType === "LORA_STACK") { outputClass = "STRING"; } 
+                            else { outputClass = baseType; }
+
+                            const displayName = params.name || key;
+                            if (this.outputs[idx]) {
+                                this.outputs[idx].type = outputClass;
+                                this.outputs[idx].label = displayName;
+                            }
+                        });
+                        this.setDirtyCanvas(true, true);
+                        return;
+                    }
+
+                    // 只有在配置真正发生修改（增删配置项）时，才安全备份并重建
                     const oldLinks = [];
                     if (this.outputs) {
                         for (let i = 0; i < this.outputs.length; i++) {
                             const output = this.outputs[i];
                             if (output.links && output.links.length > 0) {
                                 const linksInfo = output.links.map(lId => {
-                                    const l = app.graph.links[lId];
-                                    return l ? { target_id: l.target_id, target_slot: l.target_slot } : null;
-                                }).filter(l => l);
+                                    const l = app.graph ? app.graph.links[lId] : null;
+                                    if (!l) return null;
+                                    const targetNode = app.graph.getNodeById(l.target_id);
+                                    return targetNode ? { targetNode, target_slot: l.target_slot } : null;
+                                }).filter(Boolean);
                                 oldLinks.push({ name: output.name, connections: linksInfo });
                                 this.disconnectOutput(i);
                             }
                         }
                     }
-                    
+
                     this.outputs = [];
                     outputEntries.forEach(([key, params], idx) => {
                         const baseType = (params.type || "*").toUpperCase();
                         let outputClass;
                         if (params.class) { outputClass = String(params.class).toUpperCase() } 
-                        else if (baseType === "INPUT") { outputClass = "*";  } 
-                        else if (baseType === "SEED") { outputClass = "INT";  } 
-                        else if (baseType === "UPLOADER") { outputClass = "COMBO";  } 
-                        else if (baseType === "LORA_STACK") { outputClass = "STRING";  } 
-                        else { outputClass = baseType;  }
-                        
+                        else if (baseType === "INPUT") { outputClass = "*"; } 
+                        else if (baseType === "SEED") { outputClass = "INT"; } 
+                        else if (baseType === "UPLOADER") { outputClass = "COMBO"; } 
+                        else if (baseType === "LORA_STACK") { outputClass = "STRING"; } 
+                        else { outputClass = baseType; }
+
                         const displayName = params.name || key; const isOptional = params.optional ?? false;
                         this.addOutput(key, outputClass, {shape: isOptional ? 7 : undefined});
                         const newOutput = this.outputs[this.outputs.length - 1]; newOutput.label = displayName;
-                        
+
                         const backup = oldLinks.find(l => l.name === key);
-                        if (backup) { backup.connections.forEach(conn => { this.connect(idx, conn.target_id, conn.target_slot); }); }
+                        if (backup) {
+                            backup.connections.forEach(conn => {
+                                if (conn.targetNode) {
+                                    this.connect(idx, conn.targetNode, conn.target_slot);
+                                }
+                            });
+                        }
                     });
                     this.setSize(this.computeSize()); this.setDirtyCanvas(true, true);
                 };
                 return r;
             };
-            
+
             const onConnectionsChange = nodeType.prototype.onConnectionsChange;
             nodeType.prototype.onConnectionsChange = function (type, slotIndex, isConnected, linkInfo) {
                 if (onConnectionsChange) onConnectionsChange.apply(this, arguments);
                 if (type === 1 && slotIndex === 0) { setTimeout(() => this.syncFromUpstream(), 50); }
             };
-            
+
             const onConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function () {
                 if (onConfigure) onConfigure.apply(this, arguments);
@@ -1138,11 +1190,9 @@ app.registerExtension({
                     else if (pOpts.round !== undefined) { derivedPrecision = getPrecisionFromStep(pOpts.round); } 
                     else if (pOpts.step !== undefined) { derivedPrecision = getPrecisionFromStep(pOpts.step); }
                     
-                    // ✅【修改后】：增加对目标节点控件真实值的读取
                     let key = `${targetNode.title || targetNode.type}_${targetSlotName}`.replace(/[^a-zA-Z0-9_]/g, "_");
                     if (config[key]) key = `${key}_${outIdx}`;
                     
-                    // 1. 尝试从目标节点的实时 widgets 中寻找对应控件并读取 value
                     let targetLiveValue = undefined;
                     if (targetNode.widgets) {
                         const targetW = targetNode.widgets.find(w => w.name === targetSlotName);
@@ -1154,7 +1204,6 @@ app.registerExtension({
                     const activeWidget = this.widgets?.find(w => w.name === key);
                     const oldItem = oldConfig?.[key];
                     const isSameNode = Boolean(oldItem && oldItem._node_id !== undefined && oldItem._node_id === targetNode.id);
-                    // 2. 优先级：AppBuilder已有的值 > 目标节点当前的真实值 > 节点定义的默认值
                     let fallbackValue = targetLiveValue !== undefined ? targetLiveValue : (pOpts.default !== undefined ? pOpts.default : null);
                     const savedValue = (isSameNode && oldConfig[key].value !== undefined) ? oldConfig[key].value : fallbackValue;
                     const activeValue = isSameNode && activeWidget ? activeWidget.value : savedValue;
@@ -1172,7 +1221,7 @@ app.registerExtension({
                         values: pValues, 
                         multiline: !!pOpts.multiline, 
                         _slot: outIdx,
-                        _node_id: targetNode.id, // 👈【核心】：记住目标节点的真实物理 ID
+                        _node_id: targetNode.id,
                         folder: pOpts.folder 
                     };
                     validKeys.push(key);

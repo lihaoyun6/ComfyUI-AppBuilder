@@ -2034,6 +2034,25 @@
             document.getElementById('lightbox-next').onclick = (e) => { e.stopPropagation(); navigateLightbox(1); };
             document.getElementById('lightbox-close').onclick = (e) => { e.stopPropagation(); closeLightbox(); };
             
+            window.addEventListener('keydown', (e) => {
+                if (lightboxModal.style.display !== 'flex') return;
+                
+                // 忽略在输入框/文本域打字时的键盘事件
+                const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+                if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') return;
+                
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    navigateLightbox(-1);
+                } else if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    navigateLightbox(1);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeLightbox();
+                }
+            });
+            
             // 1. 💻 电脑端：鼠标滚轮缩放
             lightboxModal.addEventListener('wheel', (e) => {
                 if (lightboxModal.style.display !== 'flex') return;
