@@ -408,17 +408,27 @@
             flex: 1; padding: 10px; border: 2px dashed var(--border); border-radius: 8px;
             background: var(--bg); text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s;
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; user-select: none;
+            outline: none;
         }
         .uploader-dropzone.dragover { border-color: var(--primary); background: rgba(76, 175, 80, 0.05); }
         .uploader-dropzone:hover { background: rgba(76, 175, 80, 0.05); }
         .uploader-text { font-size: 13px; color: #888; }
         .uploader-filename { font-size: 12px; color: var(--primary); word-break: break-all; margin-top: 2px; font-weight: bold; }
         
-        .uploader-preview-toggle {
+        /* 📋 上下排列的按钮组样式 */
+        .uploader-btn-group { display: flex; flex-direction: column; gap: 6px; width: 2.5rem; flex-shrink: 0; }
+        .uploader-btn {
+            background: var(--panel-bg); border: 1px solid var(--border); color: var(--text); border-radius: 8px;
+            width: 2.5rem; height: 100%; min-height: 36px; cursor: pointer; font-size: 16px; display: flex;
+            align-items: center; justify-content: center; user-select: none; flex: 1;
+        }
+        .uploader-btn:hover { background-color: var(--border); }
+        .uploader-preview-toggle { display: none; }
+        /*.uploader-preview-toggle {
             background: var(--panel-bg); border: 1px solid var(--border); color: #fff; border-radius: 8px;
             width: 2.5rem; cursor: pointer; font-size: 16px; display: none; align-items: center;
             justify-content: center; user-select: none;
-        }
+        }*/
         .uploader-preview-toggle:hover { background-color: var(--border); }
         .uploader-preview-box {
             margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
@@ -642,6 +652,13 @@
         }
     </style>
     <script>
+        function isMobile() {
+            const ua = navigator.userAgent;
+            if (/Android|iPhone|iPod/i.test(ua)) return true;
+            if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) return true;
+            return false;
+        }
+        
         // 🛡️ 全局网页防双指张开缩放金钟罩 (仅对灯箱大图 #lightbox-img 白名单放行)
         function initGlobalAntiPinchGuard() {
             // A. 拦截 iOS Safari 专属的 Safari 网页缩放手势
@@ -1673,14 +1690,55 @@
                     else if (mediaType === 'audio') fileInput.accept = 'audio/*';
                     else fileInput.accept = 'image/*,video/*,audio/*';
                     
+                    // 按钮组容器
+                    const btnGroup = document.createElement('div');
+                    btnGroup.className = 'uploader-btn-group';
+                    
+                    // 1. 📋 粘贴按钮
+                    const btnPaste = document.createElement('button');
+                    btnPaste.type = 'button';
+                    btnPaste.className = 'uploader-btn btn-paste';
+                    btnPaste.innerText = '📋';
+                    btnPaste.title = t('btn_paste_clipboard', 'Paste from clipboard');
+                    
+                    // 2. 👁️ 预览开/关按钮
                     const previewToggle = document.createElement('button');
                     previewToggle.type = 'button';
-                    previewToggle.className = 'uploader-preview-toggle';
+                    previewToggle.className = 'uploader-btn uploader-preview-toggle';
                     previewToggle.innerText = '👁️';
                     previewToggle.style.display = currentValue ? 'flex' : 'none';
                     
-                    controlRow.appendChild(dropzone); controlRow.appendChild(previewToggle);
-                    uploaderContainer.appendChild(fileInput); uploaderContainer.appendChild(controlRow);
+                    btnGroup.appendChild(btnPaste);
+                    btnGroup.appendChild(previewToggle);
+                    
+                    controlRow.appendChild(dropzone); 
+                    controlRow.appendChild(btnGroup);
+                    uploaderContainer.appendChild(fileInput); 
+                    uploaderContainer.appendChild(controlRow);
+                    
+                    // 点击粘贴按钮
+                    btnPaste.onclick = (e) => {
+                        e.stopPropagation();
+                        pasteClipboardMedia((file) => handleFileUpload(file));
+                    };
+                    
+                    // 支持直接聚焦拖拽框后按 Ctrl+V 粘贴
+                    dropzone.tabIndex = 0;
+                    dropzone.addEventListener('paste', (e) => {
+                        const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+                        if (items) {
+                            for (const item of items) {
+                                if (item.type.indexOf('image') !== -1 || item.type.indexOf('video') !== -1 || item.type.indexOf('audio') !== -1) {
+                                    const file = item.getAsFile();
+                                    if (file) {
+                                        e.preventDefault();
+                                        handleFileUpload(file);
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                    });
                     
                     const previewBox = document.createElement('div');
                     previewBox.className = 'uploader-preview-box collapsed';
@@ -2456,6 +2514,111 @@
             batchInput.value = batchCount;
             window.comfyApp.queuePrompt(0, batchCount); 
         });
+        
+        async function pasteClipboardMedia(onFileObtained) {
+            if (navigator.clipboard && navigator.clipboard.read) {
+                try {
+                    const clipboardItems = await navigator.clipboard.read();
+                    for (const item of clipboardItems) {
+                        for (const type of item.types) {
+                            if (type.startsWith('image/') || type.startsWith('video/') || type.startsWith('audio/')) {
+                                const blob = await item.getType(type);
+                                const ext = type.split('/')[1] || 'png';
+                                const file = new File([blob], `pasted_media_${Date.now()}.${ext}`, { type });
+                                onFileObtained(file);
+                                return;
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Clipboard API Direct read blocked, using prompt fallback:", err);
+                }
+            }
+            
+            showHttpPastePrompt(onFileObtained);
+        }
+    
+        function showHttpPastePrompt(onFileObtained) {
+            const isMobileDevice = isMobile();
+            
+            let overlay = document.getElementById('http-paste-overlay');
+            if (overlay) overlay.remove();
+            
+            overlay = document.createElement('div');
+            overlay.id = 'http-paste-overlay';
+            overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+            z-index: 999999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; color: var(--text); padding: 20px;
+            `;
+            
+            const promptTitle = isMobileDevice ? t("paste_content", "Pasteboard") : t("press_to_paste", "Press Ctrl/Cmd + V to paste");
+            const promptDesc = isMobileDevice ? t("tap_to_paste", "Tap or touch and hold the box below, then tap【Paste】") : t("shortcut_required","(You must use the keyboard shortcut to paste in a non-secure context)");
+            
+            overlay.innerHTML = `
+            <div style="background: var(--panel-bg); border: 1px solid var(--border); padding: 24px 20px; border-radius: 16px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <div style="font-size: 36px; line-height: 1;">📋</div>
+                <div style="font-size: 16px; font-weight: bold; color: var(--text);">${promptTitle}</div>
+                <div style="font-size: 12px; color: var(--title);">${promptDesc}</div>
+                
+                <div id="paste-editable-target" contenteditable="true" style="
+                    width: 100%; min-height: 80px; margin-bottom: 8px;
+                    display: ${isMobileDevice ? 'flex' : 'none'};
+                    background: var(--bg); border: 2px dashed var(--primary);
+                    border-radius: 10px; margin-top: 6px; align-items: center;
+                    justify-content: center; padding: 10px; font-size: 13px; color: #888;
+                    outline: none; -webkit-user-select: text; user-select: text;
+                ">
+                    ${t("tap_or_hold", "👉 Tap or touch and hold here")}
+                </div>
+                    <div style="display: ${isMobileDevice ? 'none' : 'block'}; font-size: 12px; font-weight: bold; margin-top: 8px; padding-left: 12px;">${t("waiting_shortcut", "Waiting for key press…")}</div>
+                    <button id="close-paste-overlay" style="padding: 8px 20px; background: var(--border); border: none; color: var(--text); font-weight: bold; border-radius: 6px; cursor: pointer;">${t("cancel", "Cancel")}</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            
+            const editable = overlay.querySelector('#paste-editable-target');
+            const closeBtn = overlay.querySelector('#close-paste-overlay');
+            
+            const cleanup = () => {
+                if (overlay) overlay.remove();
+                document.removeEventListener('paste', handlePaste);
+            };
+            
+            closeBtn.onclick = cleanup;
+            overlay.onclick = (e) => { if (e.target === overlay) cleanup(); };
+                
+            const handlePaste = (e) => {
+                e.preventDefault();
+                const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+                if (items) {
+                    for (const item of items) {
+                        if (item.type.indexOf('image') !== -1 || item.type.indexOf('video') !== -1 || item.type.indexOf('audio') !== -1) {
+                            const file = item.getAsFile();
+                            if (file) {
+                                cleanup();
+                                onFileObtained(file);
+                                return;
+                            }
+                        }
+                    }
+                }
+            };
+                
+            document.addEventListener('paste', handlePaste);
+            
+            setTimeout(() => {
+                editable.focus();
+                if (isMobileDevice) {
+                    const range = document.createRange();
+                    range.selectNodeContents(editable);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            }, 100);
+        }
         
         document.getElementById('btn-stop').addEventListener('click', () => {
             fetch('/interrupt', { method: 'POST' }).catch(err => console.error("Interrupt failed:", err));

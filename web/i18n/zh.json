@@ -117,5 +117,11 @@
   "save_confirm": "是否保存修改?",
   "btn_add_lora": "+ 添加LoRA",
   "toggle_all": "总开关",
-  "remove": "移除"
+  "remove": "移除",
+  "press_to_paste": "按 Ctrl/Cmd + V 以粘贴",
+  "shortcut_required": "(在非安全上下文中必须使用快捷键进行粘贴)",
+  "waiting_shortcut": "等待键盘输入...",
+  "paste_content": "粘贴内容",
+  "tap_to_paste": "轻触或长按下方虚线框，并使用系统的【粘贴】功能",
+  "tap_or_hold": "👉 轻触或长按这里"
 }
