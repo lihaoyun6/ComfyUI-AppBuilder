@@ -687,8 +687,15 @@ app.registerExtension({
                         } else if (type === "STRING") {
                             if (params.multiline || params.placeholder) {
                                 ComfyWidgets.STRING(this, key, ["STRING", { multiline: !!params.multiline, default: val || "" }], app);
-                                widget = this.widgets[this.widgets.length - 1]; widget.value = val || "";
-                                if (widget.inputEl && params.placeholder) widget.inputEl.placeholder = params.placeholder;
+                                widget = this.widgets[this.widgets.length - 1];
+                                if (widget) {
+                                    widget.value = val || "";
+                                    widget.callback = (v) => saveWidgetValueToConfig(this, key, v);
+                                    if (widget.inputEl) {
+                                        if (params.placeholder) widget.inputEl.placeholder = params.placeholder;
+                                        widget.inputEl.addEventListener("input", (e) => { saveWidgetValueToConfig(this, key, e.target.value); });
+                                    }
+                                }
                             } else { widget = this.addWidget("text", key, val || "", (v) => saveWidgetValueToConfig(this, key, v), {}); }
                         } else if (type === "LORA_STACK") {
                             widget = this.addWidget("text", key, val || "[]", (v) => saveWidgetValueToConfig(this, key, v), { read_only: true });
@@ -696,7 +703,6 @@ app.registerExtension({
                                 widget.disabled = true;
                                 widget.options = widget.options || {};
                                 widget.options.read_only = true;
-                                widget.label = `🔒 ${params.name || key} (Edit in AppView)`;
                             }
                         } else if (type === "COMBO") {
                             let values = params.values || ["None"];
@@ -754,10 +760,17 @@ app.registerExtension({
                                 const originNode = app.graph.getNodeById(backup.origin_id);
                                 if (originNode) originNode.connect(backup.origin_slot, this, newIdx);
                             }
+                        }  else if (type === "BUTTON") {
+                            const action = params.action === "stop" ? "stop" : "run";
+                            widget = this.addWidget("button", params.name || key, action, () => {
+                                if (action === "run") app.queuePrompt(0);
+                                else if (action === "stop") api.interrupt();
+                            });
                         }
-
                         if (widget) {
-                            widget.label = params.name || key; widget.tooltip = params.tooltip;
+                            const label = params.name || key;
+                            widget.label = (type === "LORA_STACK") ? `🔒 ${label}` : label;
+                            widget.tooltip = params.tooltip;
                             if (storedValues) {
                                 const wIdx = this.widgets.indexOf(widget);
                                 if (wIdx !== -1 && storedValues[wIdx] !== undefined) widget.value = storedValues[wIdx];
@@ -1309,7 +1322,6 @@ app.registerExtension({
                             }
                         }
                     }
-                        
                     if (param.type === "UPLOADER") {
                         existingW = setupUploaderWidget(this, key, param, defaultVal, validKeys);
                         if (existingW) {
@@ -1360,13 +1372,23 @@ app.registerExtension({
                                 existingW.disabled = true;
                                 existingW.options = existingW.options || {};
                                 existingW.options.read_only = true;
+                                existingW.label = `🔒 ${param.name || key}`;
+                            }
+                        } else if (param.type === "STRING" && param.multiline) {
+                            existingW = ComfyWidgets.STRING(this, key, ["STRING", { multiline: true, default: defaultVal || "" }], app).widget;
+                            if (existingW) existingW.callback = (v) => saveWidgetValueToConfig(this, key, v);
+                            if (existingW.inputEl) {
+                                if (existingW.inputEl) existingW.inputEl.placeholder = param.name;
+                                existingW.inputEl.addEventListener("input", (e) => { saveWidgetValueToConfig(this, key, e.target.value); });
                             }
                         } else {
                             existingW = this.addWidget("text", key, defaultVal, (v) => saveWidgetValueToConfig(this, key, v), {});
                         }
-                        existingW.label = param.name; 
+                        const label = param.name || key;
+                        existingW.label = (param.type === "LORA_STACK") ? `🔒 ${label}` : label;
                     } else {
-                        existingW.label = param.name;
+                        const label = param.name || key;
+                        existingW.label = (param.type === "LORA_STACK") ? `🔒 ${label}` : label;
                         existingW.callback = (v) => saveWidgetValueToConfig(this, key, v);
                     }
                 });

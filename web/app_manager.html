@@ -124,11 +124,21 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            min-width: 0; /* 允许文本截断 */
+            flex: 1;
         }
         .item-name {
-            font-size: 1.05rem; /* 稍微缩小字体 */
+            font-size: 1.05rem;
             font-weight: 600;
             color: var(--text-color);
+            line-height: 1.35;       /* 显式设置行高，保证两行排版优雅 */
+            
+            /* 🔒 核心：最多显示 2 行文本，超出的部分显示 ... */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-word; /* 确保无空格的长文件名也能正确换行 */
         }
         .item-date {
             font-size: 0.75rem;
@@ -138,6 +148,9 @@
             font-size: 0.8rem;
             color: var(--accent-color);
             font-weight: 500;
+            white-space: nowrap; /* 🔒 绝不换行 */
+            flex-shrink: 0;      /* 🔒 绝不压缩变形 */
+            margin-left: 12px;   /* 与左侧拉开安全距离 */
         }
         /* 右上角关闭按钮样式 */
         .close-manager-btn {
@@ -263,6 +276,34 @@
             } catch(e) { console.error("Load list failed:", e); }
         }
 
+        // 📏 智能文件大小格式化：最多 4 位数字 + 1 个小数点 + 单位
+        function formatFileSize(bytes) {
+            if (!bytes || bytes <= 0) return "0 B";
+            const units = ["B", "KB", "MB", "GB"];
+            let i = 0;
+            let num = bytes;
+            
+            while (num >= 1024 && i < units.length - 1) {
+                num /= 1024;
+                i++;
+            }
+            
+            let str;
+            if (num >= 1000) {
+                str = num.toFixed(0); // 4位整数 (如 1020 B)
+            } else if (num >= 100) {
+                str = num.toFixed(1); // 3位整数 + 1位小数 (如 123.4 KB)
+            } else if (num >= 10) {
+                str = num.toFixed(2); // 2位整数 + 2位小数 (如 12.34 KB)
+            } else if (i === 0) {
+                str = num.toFixed(0); // 纯字节保留整数 (如 500 B)
+            } else {
+                str = num.toFixed(3); // 1位整数 + 3位小数 (如 1.234 MB)
+            }
+            
+            return `${str} ${units[i]}`;
+        }
+        
         function renderList() {
             const searchVal = document.getElementById("search").value.toLowerCase();
             const sortBy = document.getElementById("sort").value;
@@ -276,7 +317,7 @@
                 if (sortBy === "name_asc") return a.name.localeCompare(b.name);
                 if (sortBy === "name_desc") return b.name.localeCompare(a.name);
             });
-
+            
             document.getElementById("count").innerText = t('available_apps', '{0} apps available', filtered.length);
             container.innerHTML = "";
             
@@ -285,18 +326,19 @@
                 el.className = "item";
                 
                 const formattedDate = new Date(item.mtime * 1000).toLocaleString();
-                const sizeKB = (item.size / 1024).toFixed(1) + " KB";
+                
+                // 👈 使用格式化函数
+                const sizeFormatted = formatFileSize(item.size);
                 const cleanName = item.name.replace(".json", "");
-
+                
                 el.innerHTML = `
                     <div class="item-info">
                         <span class="item-name">${cleanName}</span>
                         <span class="item-date">${formattedDate}</span>
                     </div>
-                    <span class="item-size">${sizeKB}</span>
+                    <span class="item-size">${sizeFormatted}</span>
                 `;
                 el.onclick = () => {
-                    // 显示遮挡层，移除定时器，等待后端加载完成主动通知解除
                     const splash = document.getElementById('splash-screen');
                     splash.style.display = "flex";
                     window.parent.postMessage({ type: "load_workflow", filename: item.name }, "*");
