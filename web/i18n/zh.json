@@ -129,5 +129,13 @@
   "waiting_shortcut": "等待键盘输入...",
   "paste_content": "粘贴内容",
   "tap_to_paste": "轻触或长按下方虚线框，并使用系统的【粘贴】功能",
-  "tap_or_hold": "👉 轻触或长按这里"
+  "tap_or_hold": "👉 轻触或长按这里",
+  "save_app": "保存修改",
+  "app_saved": "已保存",
+  "save_failed": "保存失败",
+  "save_failed_alert": "⚠️ 保存失败\n\n{0}",
+  "queue_error": "⚠️ 请求失败\n\n{0}",
+  "saving": "正在保存...",
+  "refreshing": "正在加载节点和模型列表",
+  "no_subgraph_alert": "⚠️ 兼容性警告\n\n独立模式不支持子图或旁路器, 请在画布模式中打开此工作流."
 }

@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>App Manager</title>
     <style>
         :root {
-            /* 默认深色主题 */
             --bg: #000000;
             --bg-color: #000000;
             --card-bg: #1C1C1E;
@@ -20,7 +19,6 @@
         }
 
         :root.light-theme {
-            /* 浅色主题 */
             --bg: #fafafa;
             --bg-color: #fafafa;
             --card-bg: #ffffff;
@@ -33,33 +31,40 @@
             --inset-shadow: rgba(0,0,0,0.05);
         }
 
-        body {
+        /* 🔒 1. 锁死整个页面，禁止外层滚动和橡皮筋回弹 */
+        html, body {
             background: var(--bg-color);
             color: var(--text-color);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
+            padding: 0;
+            width: 100vw;
+            height: 100dvh;          /* 使用 100dvh 适配移动端浏览器工具栏 */
+            overflow: hidden;        /* 🔒 全局禁止页面滚动 */
+            overscroll-behavior: none; /* 🔒 禁用 iOS 橡皮筋回弹效果 */
+            touch-action: none;      /* 🔒 默认屏蔽一切滑动与缩放手势 */
             -webkit-user-select: none;
             user-select: none;
+            display: flex;
+            flex-direction: column;  /* 使用 Flex 垂直布局 */
         }
 
-        /* ==========================================
-           📌 头部区域吸顶 (Sticky Header)
-           ========================================== */
+        body, button, input, select, .item {
+            touch-action: manipulation; /* 允许常规点击，防双击缩放 */
+        }
+
+        /* 2. 固定顶栏 Header，不参与滚动 */
         .header {
-            position: sticky;
-            top: 0;
-            background: var(--bg-color); /* 覆盖背景，阻挡滚动文字 */
-            padding-top: 20px;            /* 补偿 body 边距 */
-            margin-top: -20px;            /* 贴合顶部边界 */
+            position: relative;
+            background: var(--bg-color);
+            padding: 20px 20px 14px 20px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-            padding-bottom: 14px;
-            margin-bottom: 16px;
             z-index: 100;
-            border-bottom: 1px solid var(--border-color); /* 优雅分割线 */
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;          /* 🔒 防止头部被压缩 */
+            touch-action: pan-y;     /* 允许 Header 上的交互操作 */
         }
         .title {
             font-size: 1.5rem;
@@ -67,16 +72,36 @@
             color: var(--accent-color);
             letter-spacing: 0.5px;
         }
+        .search-wrapper {
+            position: relative;
+        }
+        
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            color: var(--text-color);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
         .search-bar {
             background: var(--search-bg);
             border: 1px solid var(--search-border);
             border-radius: 10px;
-            padding: 10px 15px; /* 缩减垂直边距 */
+            padding: 10px 15px 10px 32px;
             color: var(--text-color);
             font-size: 0.95rem;
             outline: none;
             box-shadow: inset 0 2px 4px var(--inset-shadow);
+            width: 100%;
+            box-sizing: border-box;
+            touch-action: manipulation;
         }
+        
         .search-bar:focus {
             border-color: var(--accent-color);
         }
@@ -95,21 +120,28 @@
             padding: 5px 10px;
             outline: none;
             font-size: 0.85rem;
+            touch-action: manipulation;
         }
 
-        /* ==========================================
-           📏 更矮、更精致的紧凑型列表 Item
-           ========================================== */
+        /* 🔒 3. 仅让列表容器可以独立滚动 */
         .list-container {
+            flex: 1;                 /* 占据剩余全部高度 */
             display: flex;
             flex-direction: column;
-            gap: 10px; /* 紧凑间距 */
+            gap: 10px;
+            padding: 16px 20px 20px 20px;
+            overflow-y: auto;        /* 🔒 开启仅列表区的纵向滚动 */
+            -webkit-overflow-scrolling: touch; /* iOS 顺滑滚动 */
+            overscroll-behavior-y: contain; /* 阻止滚动链传递到底层 */
+            touch-action: pan-y;     /* 🔒 仅允许在列表区上下滑动 */
+            box-sizing: border-box;
         }
+
         .item {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 10px;
-            padding: 12px 16px; /* 🔥 深度缩减内边距：高度更矮更干练！ */
+            padding: 12px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -118,27 +150,25 @@
         }
         .item:active {
             background: var(--search-bg);
-            transform: scale(0.98);
+            transform: scale(0.995);
         }
         .item-info {
             display: flex;
             flex-direction: column;
             gap: 4px;
-            min-width: 0; /* 允许文本截断 */
+            min-width: 0;
             flex: 1;
         }
         .item-name {
             font-size: 1.05rem;
             font-weight: 600;
             color: var(--text-color);
-            line-height: 1.35;       /* 显式设置行高，保证两行排版优雅 */
-            
-            /* 🔒 核心：最多显示 2 行文本，超出的部分显示 ... */
+            line-height: 1.35;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            word-break: break-word; /* 确保无空格的长文件名也能正确换行 */
+            word-break: break-word;
         }
         .item-date {
             font-size: 0.75rem;
@@ -148,15 +178,14 @@
             font-size: 0.8rem;
             color: var(--accent-color);
             font-weight: 500;
-            white-space: nowrap; /* 🔒 绝不换行 */
-            flex-shrink: 0;      /* 🔒 绝不压缩变形 */
-            margin-left: 12px;   /* 与左侧拉开安全距离 */
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-left: 12px;
         }
-        /* 右上角关闭按钮样式 */
         .close-manager-btn {
             position: absolute;
-            top: 10px;
-            right: 0px;
+            top: 15px;
+            right: 20px;
             background: transparent;
             border: none;
             color: var(--text-muted);
@@ -165,30 +194,17 @@
             line-height: 1;
             padding: 5px;
             transition: color 0.1s;
+            touch-action: manipulation;
         }
         .close-manager-btn:active {
             color: var(--accent-color);
         }
         
         .splash-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100dvh;
-            background-color: var(--bg);
-            z-index: 999999;
-            
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            
-            display: none;
-            pointer-events: auto;
-            user-select: none;
-            -webkit-user-select: none;
-            isolation: isolate;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background-color: var(--bg); z-index: 999999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            display: none; pointer-events: auto; user-select: none; -webkit-user-select: none;
         }
         .splash-content { text-align: center; }
         .splash-icon { font-size: 64px; display: block; margin-bottom: 16px; }
@@ -198,40 +214,66 @@
         }
     </style>
     <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const isStandalone = (window.self === window.top) || urlParams.get('mode') === 'standalone';
+
         function syncThemeWithAppView() {
             const savedTheme = localStorage.getItem('appview_theme') || 'system';
             let activeTheme = savedTheme;
-            
             if (savedTheme === 'system') {
                 const topWin = window.top || window;
-                return topWin.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                activeTheme = topWin.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
             }
-            
-            if (activeTheme === 'light') {
-                document.documentElement.classList.add("light-theme");
-            } else {
-                document.documentElement.classList.remove("light-theme");
-            }
+            if (activeTheme === 'light') document.documentElement.classList.add("light-theme");
+            else document.documentElement.classList.remove("light-theme");
         }
         
         syncThemeWithAppView();
-        
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'appview_theme') syncThemeWithAppView();
-        });
-        
+        window.addEventListener('storage', (e) => { if (e.key === 'appview_theme') syncThemeWithAppView(); });
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-            const savedTheme = localStorage.getItem('appview_theme') || 'system';
-            if (savedTheme === 'system') syncThemeWithAppView();
+            if ((localStorage.getItem('appview_theme') || 'system') === 'system') syncThemeWithAppView();
         });
 
-        // 监听动态解锁消息
         window.addEventListener('message', (e) => {
             if (e.data && e.data.type === "hide_splash") {
                 const splash = document.getElementById('splash-screen');
                 if (splash) splash.style.display = "none";
             }
         });
+        
+        // 🛡️ 全局网页防双指缩放/双击放大金钟罩
+        function initGlobalAntiPinchGuard() {
+            // A. 全局彻底拦截 iOS Safari 专属缩放手势
+            document.addEventListener('gesturestart', (e) => e.preventDefault());
+            document.addEventListener('gesturechange', (e) => e.preventDefault());
+            document.addEventListener('gestureend', (e) => e.preventDefault());
+            
+            // B. 拦截所有移动端浏览器的多指 (双指/三指) 捏合拉伸放缩
+            document.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 1 && e.cancelable) e.preventDefault();
+            }, { passive: false });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 1 && e.cancelable) e.preventDefault();
+            }, { passive: false });
+
+            // C. 拦截快速双击放大 (Double-tap zoom)
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', (e) => {
+                const now = Date.now();
+                const targetTag = e.target.tagName.toLowerCase();
+                // 放行输入框和下拉菜单的常规点击
+                if (targetTag === 'input' || targetTag === 'select' || targetTag === 'option') return;
+
+                if (now - lastTouchEnd <= 300) {
+                    if (e.cancelable) e.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, { passive: false });
+        }
+        
+        // 启动金钟罩
+        initGlobalAntiPinchGuard();
     </script>
 </head>
 <body>
@@ -245,7 +287,13 @@
     <div class="header">
         <button id="close-manager" class="close-manager-btn">&times;</button>
         <div class="title" data-i18n="title-apps">🗂️ My Apps</div>
-        <input type="text" id="search" class="search-bar" placeholder-i18n="search_apps" placeholder="Search your apps...">
+        <div class="search-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+                <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <input type="text" id="search" class="search-bar" placeholder-i18n="search_apps" placeholder="Search your apps...">
+        </div>
         <div class="toolbar">
             <span id="count">0 apps available</span>
             <select id="sort">
@@ -256,13 +304,20 @@
             </select>
         </div>
     </div>
+
+    <!-- 仅此列表区可以独立纵向滚动 -->
     <div class="list-container" id="list"></div>
-    <script type="text/javascript" src="./i18n.js"></script>
+
+    <script type="text/javascript" src="./i18n/i18n.js"></script>
     <script>
         let allWorkflows = [];
         
         window.addEventListener('DOMContentLoaded', async () => {
             await loadI18n();
+            if (isStandalone) {
+                const closeBtn = document.getElementById('close-manager');
+                if (closeBtn) closeBtn.style.display = 'none';
+            }
             await loadList();
         });
         
@@ -276,31 +331,17 @@
             } catch(e) { console.error("Load list failed:", e); }
         }
 
-        // 📏 智能文件大小格式化：最多 4 位数字 + 1 个小数点 + 单位
         function formatFileSize(bytes) {
             if (!bytes || bytes <= 0) return "0 B";
             const units = ["B", "KB", "MB", "GB"];
-            let i = 0;
-            let num = bytes;
-            
-            while (num >= 1024 && i < units.length - 1) {
-                num /= 1024;
-                i++;
-            }
-            
+            let i = 0; let num = bytes;
+            while (num >= 1024 && i < units.length - 1) { num /= 1024; i++; }
             let str;
-            if (num >= 1000) {
-                str = num.toFixed(0); // 4位整数 (如 1020 B)
-            } else if (num >= 100) {
-                str = num.toFixed(1); // 3位整数 + 1位小数 (如 123.4 KB)
-            } else if (num >= 10) {
-                str = num.toFixed(2); // 2位整数 + 2位小数 (如 12.34 KB)
-            } else if (i === 0) {
-                str = num.toFixed(0); // 纯字节保留整数 (如 500 B)
-            } else {
-                str = num.toFixed(3); // 1位整数 + 3位小数 (如 1.234 MB)
-            }
-            
+            if (num >= 1000) str = num.toFixed(0);
+            else if (num >= 100) str = num.toFixed(1);
+            else if (num >= 10) str = num.toFixed(2);
+            else if (i === 0) str = num.toFixed(0);
+            else str = num.toFixed(3);
             return `${str} ${units[i]}`;
         }
         
@@ -326,8 +367,6 @@
                 el.className = "item";
                 
                 const formattedDate = new Date(item.mtime * 1000).toLocaleString();
-                
-                // 👈 使用格式化函数
                 const sizeFormatted = formatFileSize(item.size);
                 const cleanName = item.name.replace(".json", "");
                 
@@ -339,9 +378,13 @@
                     <span class="item-size">${sizeFormatted}</span>
                 `;
                 el.onclick = () => {
-                    const splash = document.getElementById('splash-screen');
-                    splash.style.display = "flex";
-                    window.parent.postMessage({ type: "load_workflow", filename: item.name }, "*");
+                    if (isStandalone) {
+                        window.location.href = `app_view.html?app=${encodeURIComponent(item.name)}&mode=standalone&nocache`;
+                    } else {
+                        const splash = document.getElementById('splash-screen');
+                        splash.style.display = "flex";
+                        window.parent.postMessage({ type: "load_workflow", filename: item.name }, "*");
+                    }
                 };
                 container.appendChild(el);
             });

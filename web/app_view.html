@@ -37,13 +37,34 @@
         }
         
         .splash-screen {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background-color: var(--bg); z-index: 999999;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh; background-color: var(--bg); z-index: 999998;
             display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), visibility 0s linear 0.4s; opacity: 1; visibility: visible;
+            opacity: 1; visibility: visible; transition: opacity 0s cubic-bezier(0.25, 1, 0.5, 1), visibility 0s linear 0s;
         }
-        .splash-screen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+        .splash-screen.fade-out {
+            opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1), visibility 0s linear 0.4s;
+        }
         .splash-content { text-align: center; }
-        .splash-icon { font-size: 64px; display: block; margin-bottom: 16px; }
+        /* 🎛️ Splash 屏 Emoji 定时旋转停顿动画 */
+        .splash-icon { 
+            font-size: 64px; 
+            display: inline-block; 
+            margin-bottom: 16px;
+        }
+        
+        .splash-icon.loading {
+            animation: spinAndPause 3s infinite cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center center;
+            will-change: transform, filter;
+        }
+        
+        @keyframes spinAndPause {
+            0% { transform: rotate(0deg) scale(1); }
+            30% { transform: rotate(180deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1); }
+            80% { transform: rotate(360deg) scale(1); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
         .splash-title {
             font-size: 24px; font-weight: bold; color: var(--text); letter-spacing: 1.5px;
             font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui,sans-serif;
@@ -92,11 +113,10 @@
 
         .progress-bar-container {
             position: fixed; top: 0; left: 0; width: 100%; height: 4px;
-            background-color: transparent; z-index: 99999; pointer-events: none;
+            background-color: transparent; z-index: 999999; pointer-events: none;
         }
         .progress-bar-fill {
-            width: 0%; height: 100%; background-color: var(--primary);
-            transition: width 0.1s ease-out; box-shadow: 0 0 8px var(--primary);
+            width: 0%; height: 100%; background-color: var(--primary); transition: width 0.1s ease-out;
         }
 
         .viewer-container {
@@ -589,18 +609,18 @@
         }
         
         .header-btn {
-            background-color: var(--panel-bg); border: none; color: var(--title); height: 100%; width: 2.2rem;
+            background-color: var(--panel-bg); border: none; color: var(--title); height: 100%; width: 2rem;
             font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
             touch-action: manipulation; cursor: pointer; white-space: nowrap; 
         }
         .header-btn:hover { background-color: var(--border); }
         
         .header-status-badge {
-            background-color: var(--panel-bg); border: 1.5px solid var(--border); color: var(--title);
-            height: 30px; padding: 0 12px; border-radius: 15px; font-size: 12px; font-weight: bold;
+            background-color: var(--panel-bg); color: var(--title);
+            height: 100%; padding: 0 10px; font-size: 12px; font-weight: bold;
             display: flex; align-items: center; justify-content: center; pointer-events: auto;
             flex-shrink: 1; min-width: 0; display: block; line-height: 28px; text-align: center;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0px 0px 30px var(--shadow);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         
         /* 1. 当鼠标/焦点不在输入框内时：开启左侧省略号黑科技 */
@@ -623,6 +643,32 @@
             cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; user-select: none;
         }
         .btn-seed-util-item:hover { background-color: var(--border); }
+        
+        /* 🎛️ 右上角连体状态与监控按钮 */
+        .header-status-group {
+            background-color: var(--border); border: 1.5px solid var(--border);
+            height: 30px; border-radius: 15px; display: flex; align-items: center;
+            pointer-events: auto; overflow: hidden; box-shadow: 0px 0px 30px var(--shadow);
+            flex-shrink: 1; min-width: 0; gap: 1.5px;
+        }
+        .header-status-group .monitor-btn:hover { background-color: var(--border); color: var(--text); }
+        .header-status-group .monitor-btn.active { background-color: var(--primary); color: #fff; }
+        
+        /* 📊 系统硬件监控顶部挤压面板 */
+        .system-monitor-panel {
+            background-color: var(--bg); border-bottom: 1.5px solid var(--border); display: flex; flex-direction: column;
+            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+            padding: 8px 12px 9px 12px; gap: 8px; max-height: 260px; overflow: hidden; opacity: 1; z-index: 99; flex-shrink: 0; width: 100%;
+        }
+        .system-monitor-panel.collapsed { max-height: 0; padding-top: 0; padding-bottom: 0; border-bottom: none; pointer-events: none; }
+        .monitor-row { display: flex; gap: 10px; width: 100%; align-items: center; }
+        .monitor-item { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .monitor-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: var(--title); font-family: monospace; }
+        .monitor-label span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .monitor-bar-track { height: 7px; background-color: var(--border); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+        .monitor-bar-fill { height: 100%; background-color: var(--primary); border-radius: 3px; transition: width 0.3s ease; }
+        .monitor-bar-fill.warn { background-color: #ff9800; }
+        .monitor-bar-fill.danger { background-color: var(--red); }
         
         @media (min-width: 768px) {
             .main-layout { flex-direction: row; }
@@ -761,6 +807,18 @@
     
     <div class="main-layout">
         <div class="viewer-container">
+            <div id="system-monitor-panel" class="system-monitor-panel collapsed">
+                <!-- 第一行：系统内存 RAM -->
+                <div class="monitor-row">
+                    <div class="monitor-item">
+                        <div class="monitor-label"><span>System RAM</span><span id="mon-ram-text">0/0 GB (0%)</span></div>
+                        <div class="monitor-bar-track"><div class="monitor-bar-fill" id="mon-ram-bar" style="width: 0%;"></div></div>
+                    </div>
+                </div>
+                <!-- 第二行及以后：GPU 动态渲染区 -->
+                <div id="gpu-monitor-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+            
             <div class="preview-section">
                 <div class="header-bar">
                     <div class="header-btn-group">
@@ -770,6 +828,9 @@
                         <button class="header-btn" id="refresh-btn" title-i18n="refresh_nodes" title="Refresh Node Definitions">
                             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-cw-icon lucide-rotate-cw"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                         </button>
+                        <button class="header-btn" id="save-btn" title-i18n="save_app" title="Save Changes">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save-icon lucide-save"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg>
+                        </button>
                         <button class="header-btn" id="unload-btn" title-i18n="unload_models" title="Unload Models and Execution Cache">
                             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-brush-cleaning-icon lucide-brush-cleaning"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg>
                         </button>
@@ -777,7 +838,12 @@
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot-icon lucide-circle-dot"><path d="M 12 2 A 10 10 0 0 0 12 22 Z" fill="currentColor"/><circle cx="12" cy="12" r="10"/></svg>
                         </button>
                     </div>
-                    <span class="header-status-badge" id="status-text" data-i18n="label_ready">Ready</span>
+                    <div class="header-status-group">
+                        <span class="header-status-badge" id="status-text" data-i18n="label_ready">Ready</span>
+                        <button class="monitor-btn header-btn" id="monitor-toggle-btn" title="Toggle System Monitor">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity-icon lucide-activity"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <img id="main-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100%' height='100%'><rect width='100%' height='100%' fill='%23555'/><text x='50%' y='50%' fill='%23999' font-size='16' text-anchor='middle' alignment-baseline='middle'>No Media</text></svg>">
@@ -840,7 +906,234 @@
         <img class="lightbox-content" id="lightbox-img">
         <button class="lightbox-arrow lightbox-arrow-right" id="lightbox-next">&#10095;</button>
     </div>
-    <script type="text/javascript" src="./i18n.js"></script>
+    <script>
+        const standaloneParams = new URLSearchParams(window.location.search);
+        const appFileName = standaloneParams.get('app');
+        const isStandaloneMode = !!appFileName || standaloneParams.get('mode') === 'standalone';
+        if (isStandaloneMode) {
+            const splash = document.getElementById('splash-screen');
+            const iconEl = splash.querySelector('.splash-icon');
+            const titleEl = splash.querySelector('.splash-title');
+            iconEl.classList.add("loading");
+            iconEl.innerText = "⏳";
+            titleEl.innerText = "Loading Nodes & Models";
+        }
+    </script>
+    <script type="text/javascript" src="./i18n/i18n.js"></script>
+    <script>
+        // ⚡ ====== 无头模式 (Standalone Mode) 专用引擎 ====== ⚡
+        let standaloneClientId = "appview_standalone_" + Math.random().toString(36).substring(2, 9);
+        let standaloneWorkflowData = null;
+        let standaloneBuilderNode = null;
+        let standaloneWs = null;
+        let globalObjectInfo = null;
+        
+        async function fetchObjectInfo() {
+            if (!globalObjectInfo) {
+                try {
+                    const res = await fetch(`/appbuilder/fast_object_info?app=${encodeURIComponent(appFileName)}`);
+                    if (res.ok) globalObjectInfo = await res.json();
+                } catch(e) { console.error("Failed to fetch object_info:", e); }
+            }
+            return globalObjectInfo;
+        }
+
+        // 🔒 100% 抓取页面所有 DOM 输入框的最新值（支持 TextArea, Slider, LoraStack, Select 等）
+        function getAppViewFormValues() {
+            const formValues = {};
+            const elements = document.querySelectorAll('input, select, textarea');
+            
+            elements.forEach(el => {
+                let key = null;
+                if (el.id && el.id.startsWith('input_')) {
+                    key = el.id.replace('input_', '');
+                } else if (el.id && el.id.startsWith('lora-data_')) {
+                    key = el.id.replace('lora-data_', '');
+                }
+
+                if (key) {
+                    if (el.type === 'checkbox') {
+                        formValues[key] = el.checked;
+                    } else if (el.type === 'number' || el.type === 'range') {
+                        formValues[key] = Number(el.value);
+                    } else {
+                        formValues[key] = el.value;
+                    }
+                }
+            });
+
+            return formValues;
+        }
+
+        // ⚡ 基于“下游槽位直接注入”原理的终极 API 转换引擎
+        async function convertWorkflowToApiPrompt(workflowData, formValues) {
+            const objectInfo = await fetchObjectInfo();
+            const prompt = {};
+            const linksMap = {};
+            
+            if (workflowData.links) {
+                workflowData.links.forEach(link => {
+                    // link: [link_id, origin_id, origin_slot, target_id, target_slot, type]
+                    linksMap[link[0]] = [String(link[1]), link[2]];
+                });
+            }
+
+            const nodesMap = {};
+            workflowData.nodes.forEach(node => { nodesMap[String(node.id)] = node; });
+
+            // 1. 读取面板配置，并按槽位顺序构建映射 (0号槽: prompt, 1号槽: seed...)
+            const builderNode = workflowData.nodes.find(n => n.type === "AppBuilderAdv" || n.type === "AppBuilder");
+            let config = {};
+            if (builderNode) {
+                const configStr = builderNode.widgets_values?.[0] || "{}";
+                try { config = JSON.parse(configStr); } catch(e){}
+            }
+
+            const slotValuesMap = {};
+            const uiEntries = Object.entries(config).filter(([k, p]) => p.type !== "BUTTON" && p.type !== "BYPASSER");
+
+            uiEntries.forEach(([key, param], slotIdx) => {
+                let val = formValues[key] !== undefined ? formValues[key] : param.value;
+                if (val === undefined || val === null) val = param.default;
+
+                // 未上传新图片时，保留工作流默认图片
+                if (param.type === "UPLOADER" && (!val || val === "None")) val = null;
+
+                if (val !== null && val !== undefined) {
+                    if (param.type === "INT" || param.type === "SEED") val = Math.round(Number(val));
+                    else if (param.type === "FLOAT") val = Number(val);
+                    else if (param.type === "BOOLEAN") val = Boolean(val);
+                }
+                slotValuesMap[slotIdx] = val;
+            });
+
+            const uiNodeTypes = ["AppBuilder", "AppBuilderAdv", "ParametersUnpacker", "ParameterUnpacker", "AppBuilderBypasser"];
+
+            // 2. 遍历真实节点，把 UI 参数直接注入到 downstream 槽位中
+            workflowData.nodes.forEach(node => {
+                const classType = node.type;
+                if (!objectInfo[node.type]||uiNodeTypes.includes(classType)) return; // 过滤 UI 节点
+
+                const nodePrompt = { 
+                    class_type: classType, 
+                    inputs: {},
+                    _meta: { title: node.title || classType }
+                };
+                const nodeDef = objectInfo ? objectInfo[classType] : null;
+
+                // A. 先用节点的默认 Widget 控件值填充
+                if (nodeDef && nodeDef.input) {
+                    const reqInputs = nodeDef.input.required || {};
+                    const optInputs = nodeDef.input.optional || {};
+                    const allInputDefs = { ...reqInputs, ...optInputs };
+
+                    let widgetIdx = 0;
+                    const widgetValues = node.widgets_values || [];
+
+                    const isWidgetSpec = (spec) => {
+                        if (!spec || !Array.isArray(spec)) return false;
+                        if (Array.isArray(spec[0])) return true;
+                        const t = String(spec[0]).toUpperCase();
+                        return ["INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", "NUMBER"].includes(t);
+                    };
+
+                    for (const [inputName, inputSpec] of Object.entries(allInputDefs)) {
+                        if (isWidgetSpec(inputSpec) && widgetIdx < widgetValues.length) {
+                            let val = widgetValues[widgetIdx++];
+                            if (typeof val === "string" && ["fixed", "increment", "decrement", "randomize"].includes(val)) {
+                                if (widgetIdx < widgetValues.length) val = widgetValues[widgetIdx++];
+                            }
+                            nodePrompt.inputs[inputName] = val;
+                        }
+                    }
+                }
+
+                // B. 处理槽位连线：如果是 UI 节点的线，直接用 slotValuesMap 注入！如果是普通节点，保持 ["4", 0]
+                if (node.inputs) {
+                    node.inputs.forEach(input => {
+                        if (input.link) {
+                            const originInfo = linksMap[input.link];
+                            if (originInfo) {
+                                const originNodeId = originInfo[0];
+                                const originSlot = originInfo[1];
+                                const originNode = nodesMap[originNodeId];
+
+                                if (originNode && uiNodeTypes.includes(originNode.type)) {
+                                    // 🎯 来自 UI 节点的线：直接替换注入表单值！
+                                    const injectedVal = slotValuesMap[originSlot];
+                                    if (injectedVal !== undefined && injectedVal !== null) {
+                                        nodePrompt.inputs[input.name] = injectedVal;
+                                    }
+                                } else {
+                                    // 真实物理节点连线：保持引用
+                                    nodePrompt.inputs[input.name] = [originNodeId, originSlot];
+                                }
+                            }
+                        }
+                    });
+                }
+
+                prompt[String(node.id)] = nodePrompt;
+            });
+
+            // C. 兜底处理直连型 AppBuilder (如果有)
+            Object.entries(config).forEach(([key, param]) => {
+                const targetNodeId = param._node_id ? String(param._node_id) : null;
+                if (targetNodeId && prompt[targetNodeId]) {
+                    let userVal = formValues[key] !== undefined ? formValues[key] : param.value;
+                    if (userVal !== undefined && userVal !== null && userVal !== "None") {
+                        if (param.type === "INT" || param.type === "SEED") userVal = Math.round(Number(userVal));
+                        else if (param.type === "FLOAT") userVal = Number(userVal);
+                        else if (param.type === "BOOLEAN") userVal = Boolean(userVal);
+
+                        const nodePrefix = (nodesMap[targetNodeId]?.title || nodesMap[targetNodeId]?.type || "").replace(/[^a-zA-Z0-9_]/g, "_");
+                        let extractedSlot = key;
+                        if (key.startsWith(nodePrefix + "_")) extractedSlot = key.substring(nodePrefix.length + 1);
+                        else { const p = key.split('_'); if (p.length > 1) extractedSlot = p.slice(1).join('_'); }
+
+                        for (const inKey of Object.keys(prompt[targetNodeId].inputs)) {
+                            if (inKey.toLowerCase() === extractedSlot.toLowerCase()) {
+                                prompt[targetNodeId].inputs[inKey] = userVal;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+
+            return prompt;
+        }
+
+        // ⚡ 归一化 WebSocket 引擎：完美适配原生数据格式，解决卡生成中与走字图
+        function initStandaloneWebSocket() {
+            const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            standaloneWs = new WebSocket(`${protocol}//${location.host}/ws?clientId=${standaloneClientId}`);
+            standaloneWs.binaryType = "arraybuffer";
+
+            standaloneWs.onmessage = (event) => {
+                if (event.data instanceof ArrayBuffer) {
+                    const view = new DataView(event.data);
+                    const eventType = view.getUint32(0);
+                    if (eventType === 1) {
+                        const imageType = view.getUint32(4);
+                        const mimeType = imageType === 1 ? "image/png" : "image/jpeg";
+                        const imageBlob = new Blob([event.data.slice(8)], { type: mimeType });
+                        window.postMessage({ type: 'b_preview', blob: imageBlob }, '*');
+                    }
+                } 
+                else {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        let detail = msg.data;
+                        if (msg.type === "status" && detail && detail.status) detail = detail.status;
+                        window.postMessage({ type: msg.type, detail: detail }, '*');
+                    } catch(e){}
+                }
+            };
+
+            standaloneWs.onclose = () => { setTimeout(initStandaloneWebSocket, 2000); };
+        }
+    </script>
     <script>
         let sourceNodeId = null;
         let activeInputEl = null;
@@ -1092,17 +1385,46 @@
                 document.getElementById('btn-run').style.backgroundColor = '#3E8AE2';
                 document.getElementById('btn-run').innerText = t("button_run", "▷ Run");
                 updateQueueBadge(0);
-                alert(`⚠️ ComfyUI Queue Error\n\n${msg.message}`);
+                alert(t("queue_error", "⚠️ Queue Error\n\n{0}", msg.message)); 
             }
             else if (msg.type === 'executing') {
-                const nodeId = msg.detail;
-                if (nodeId && window.comfyApp) {
-                    const node = window.comfyApp.graph.getNodeById(nodeId);
-                    if (node) {
-                        const nodeName = node.title || node.type || `Node #${nodeId}`;
-                        statusText.innerText = nodeName; 
-                        statusText.style.color = "var(--primary)";
+                let detail = msg.detail;
+                let nodeId = null;
+                
+                if (detail) {
+                    if (typeof detail === 'object') { nodeId = detail.node; } else { nodeId = detail; }
+                }
+                // 🎯 2. 情况一：生成结束 (nodeId 为 null/undefined)
+                if (nodeId === null || nodeId === undefined) {
+                    statusText.innerText = typeof t === 'function' ? t("label_ready", "Ready") : "Ready";
+                    statusText.style.color = "var(--title)";
+                    document.getElementById('progress-bar').style.width = '0%';
+                    
+                    const btnRun = document.getElementById('btn-run');
+                    if (btnRun) {
+                        btnRun.style.backgroundColor = '#3E8AE2';
+                        btnRun.innerText = typeof t === 'function' ? t("button_run", "▷ Run") : "▷ Run";
                     }
+                } 
+                // 🎯 3. 情况二：正在运行某个节点
+                else {
+                    let nodeName = null;
+                    // A. ⚡ 独立无头模式 (Standalone Mode)
+                    if (isStandaloneMode && standaloneWorkflowData && standaloneWorkflowData.nodes) {
+                        const node = standaloneWorkflowData.nodes.find(n => String(n.id) === String(nodeId));
+                        if (node) {
+                            const displayName = globalObjectInfo?.[node.type]?.display_name;
+                            nodeName = node.title || displayName || node.type || `Node #${nodeId}`;
+                        }
+                    } 
+                    // B. 🎨 画布模式 (Canvas Mode)
+                    else if (window.comfyApp) {
+                        const node = window.comfyApp.graph.getNodeById(nodeId);
+                        if (node) nodeName = node.title || node.type || `Node #${nodeId}`;
+                    }
+                    // 更新状态文本
+                    statusText.innerText = nodeName || `Node #${nodeId}`; 
+                    statusText.style.color = "var(--primary)";
                 }
             }
             else if (msg.type === "appbuilder_log") {
@@ -1116,21 +1438,253 @@
         
         window.addEventListener('DOMContentLoaded', async () => {
             await loadI18n();
-            
-            setTimeout(() => {
-                const splash = document.getElementById('splash-screen');
-                if (splash) {
-                    splash.classList.add('fade-out');
-                    //setTimeout(() => { splash.remove(); }, 400);
-                }
-            }, 400);
+            const splash = document.getElementById('splash-screen');
+            if (splash && !isStandaloneMode) setTimeout(() => { splash.classList.add('fade-out'); }, 400);
             
             const urlParams = new URLSearchParams(window.location.search);
             const nodeId = urlParams.get('nodeId');
-            
             const isIframe = window.parent !== window;
             const parentWindow = isIframe ? window.parent : (window.opener && !window.opener.closed ? window.opener : null);
             
+            const logContainer = document.getElementById('log-drawer-container');
+            const logBtn = document.getElementById('console-toggle');
+            if (localStorage.getItem('appview_log_height')) { logHeight = parseInt(localStorage.getItem('appview_log_height')); }
+            
+            logBtn.onclick = (e) => {
+                e.stopPropagation();
+                isLogOpen = !isLogOpen;
+                logBtn.classList.toggle('active', isLogOpen);
+                const isDesktop = window.innerWidth >= 768;
+                if (isLogOpen) {
+                    if (isDesktop) { logContainer.style.height = `${logHeight}px`; } else { applyMobileLayout(logHeight); }
+                    setTimeout(() => { const content = document.getElementById('log-content'); if (content) content.scrollTop = content.scrollHeight; }, 250);
+                } else {
+                    if (isDesktop) { logContainer.style.height = '0px'; } else { applyMobileLayout(0); }
+                }
+            };
+            
+            restoreLogHistory();
+            
+            themeButtonText(localStorage.getItem('appview_theme') || 'system');
+            document.getElementById("theme-toggle").onclick = () => {
+                const currentTheme = localStorage.getItem('appview_theme') || 'system';
+                let nextTheme = 'system';
+                if (currentTheme === 'system') nextTheme = 'light';
+                else if (currentTheme === 'light') nextTheme = 'dark';
+                else nextTheme = 'system';
+                localStorage.setItem('appview_theme', nextTheme);
+                applyTheme(nextTheme);
+            };
+                        
+            const closeBtn = document.getElementById('iframe-close-btn');
+            if (closeBtn) {
+                closeBtn.style.display = 'flex';
+                closeBtn.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    if (isStandaloneMode) {
+                        window.location.href = `apps?mode=standalone`;
+                    } else if (isIframe) {
+                        window.parent.postMessage({ type: "close_appview" }, "*");
+                    } else {
+                        window.close();
+                    }
+                };
+            }
+                        
+            document.getElementById('refresh-btn').onclick = async (e) => {
+                if (!isStandaloneMode) {
+                    if (splash) {
+                        splash.classList.remove('fade-out');
+                        const titleEl = splash.querySelector('.splash-title');
+                        const iconEl = splash.querySelector('.splash-icon');
+                        iconEl.classList.add("loading");
+                        iconEl.innerText = "⏳";
+                        titleEl.innerText = t("refreshing", "Loading Nodes & Models");
+                    }
+                    
+                    try {
+                        if (window.comfyApp && typeof window.comfyApp.refreshComboInNodes === "function") {
+                            await window.comfyApp.refreshComboInNodes();
+                        }
+                    } catch (err) {
+                        console.warn("Refresh failed:", err);
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                location.reload(); 
+            };
+                        
+            // 💾 绑定无头模式原位保存按钮
+            document.getElementById('save-btn').onclick = async (e) => {
+                e.stopPropagation();
+                const statusText = document.getElementById('status-text');
+                statusText.style.color = "var(--primary)";
+                statusText.innerText = t("saving", "Saving...");
+                if (!isStandaloneMode) {
+                    window.parent.postMessage({ type: "save_workflow" }, "*");
+                    statusText.style.color = "var(--primary)";
+                    statusText.innerText = t("app_saved", "App Saved");
+                    setTimeout(() => {
+                        statusText.style.color = "var(--title)";
+                        statusText.innerText = t("label_ready", "Ready");
+                    }, 1500);
+                } else {
+                    if (!standaloneWorkflowData || !appFileName) return;
+                    try {
+                        const formValues = getAppViewFormValues();
+                        if (standaloneBuilderNode) {
+                            const configStr = standaloneBuilderNode.widgets_values?.[0] || "{}";
+                            const config = JSON.parse(configStr);
+                            
+                            Object.keys(config).forEach(key => {
+                                if (formValues[key] !== undefined) {
+                                    config[key].value = formValues[key];
+                                    config[key].default = formValues[key];
+                                }
+                            });
+                            
+                            // 🌟 核心修复：独立模式下将种子的随机模式(固定/随机/递增)保存进 JSON
+                            const seedActionBtns = document.querySelectorAll('[id^="input_action_btn_"]');
+                            seedActionBtns.forEach(btn => {
+                                const seedKey = btn.id.replace('input_action_btn_', '');
+                                if (config[seedKey]) {
+                                    config[seedKey].seed_mode = btn.dataset.mode;
+                                }
+                            });
+                            
+                            standaloneBuilderNode.widgets_values[0] = JSON.stringify(config);
+                        }
+                        const response = await fetch('/appbuilder/workflows/save', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                filename: appFileName,
+                                content: standaloneWorkflowData
+                            })
+                        });
+                        if (response.ok) {
+                            statusText.style.color = "var(--primary)";
+                            statusText.innerText = t("app_saved", "App Saved");
+                        } else {
+                            const err = await response.json();
+                            statusText.style.color = "var(--red)";
+                            statusText.innerText = t("label_error", "Error");
+                            alert(t("save_failed_alert", "⚠️ Save Failed\n\n{0}" ,(err.error || response.statusText)));
+                        }
+                    } catch (err) {
+                        console.error("[AppBuilder] Save workflow failed:", err);
+                        statusText.style.color = "var(--red)";
+                        statusText.innerText = t("save_failed", "Save Failed");
+                    } finally {
+                        setTimeout(() => {
+                            statusText.style.color = "var(--title)";
+                            statusText.innerText = t("label_ready", "Ready");
+                        }, 1500);
+                    }
+                };
+            }
+                        
+            document.getElementById('unload-btn').onclick = async (e) => {
+                const statusText = document.getElementById('status-text');
+                try {
+                    statusText.style.color = "var(--primary)";
+                    statusText.innerText = t("unloading", "Unloading Models...");
+                    
+                    const response = await fetch('/free', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({unload_models: true, free_memory: true})
+                    });
+                    
+                    if (response.ok) {
+                        statusText.innerText = t("unloaded", "Models and Execution Cache have been cleared");
+                    } else {
+                        statusText.style.color = "var(--red)";
+                        statusText.innerText = response.statusText;
+                    }
+                } catch (err) {
+                    console.error("[AppBuilder] Failed to fetch: ", err);
+                } finally {
+                    setTimeout(() => {
+                        statusText.style.color = "var(--title)";
+                        statusText.innerText = t("label_ready", "Ready");
+                    }, 1500);
+                }
+            };
+                        
+            galleryData.forEach(src => { renderGalleryItem(src, false); });
+            
+            document.getElementById('btn-clear-gallery').onclick = (e) => {
+                e.stopPropagation();
+                const confirmText = t("confirm_clear_gallery", "Clear generation history?");
+                if (confirm(confirmText)) {
+                    document.querySelectorAll('.gallery-item, .gallery-item-placeholder').forEach(el => el.remove());
+                    galleryData = []; localStorage.removeItem('appview_gallery_history');
+                }
+            };
+            
+            // 🌟【分流判断】：无头独立模式 VS 画布模式
+            if (isStandaloneMode) {
+                try {
+                    // 从后端下载工作流配置文件
+                    await fetchObjectInfo();
+                    setTimeout(() => { if (splash) splash.classList.add('fade-out'); }, 400);
+                    const res = await fetch(`/appbuilder/workflows/get?file=${encodeURIComponent(appFileName)}`);
+                    if (res.ok) {
+                        standaloneWorkflowData = await res.json();
+                        standaloneBuilderNode = standaloneWorkflowData.nodes.find(n => n.type === "AppBuilderAdv" || n.type === "AppBuilder");
+                        
+                        let hasSubgraph = false;
+                        let hasBypasser = false;
+                        
+                        // 1. 嗅探子图：检查工作流中是否包含 UUID 类型的节点 (Group Node V2)
+                        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                        if (standaloneWorkflowData.nodes) {
+                            for (const node of standaloneWorkflowData.nodes) {
+                                if (uuidRegex.test(node.type)) {
+                                    hasSubgraph = true; break;
+                                }
+                            }
+                        }
+                        
+                        // 2. 嗅探 Bypasser：检查 AppBuilder 配置中是否使用了 Bypasser 组件
+                        if (standaloneBuilderNode) {
+                            const jsonStr = standaloneBuilderNode.widgets_values?.[0] || "{}";
+                            try {
+                                const config = JSON.parse(jsonStr);
+                                for (const key in config) {
+                                    if (config[key].type === "BYPASSER") {
+                                        hasBypasser = true; break;
+                                    }
+                                }
+                            } catch(e) {}
+                        }
+                        
+                        // 如果命中其中一项，直接弹窗警告，并禁用 Run 按钮
+                        if (hasSubgraph || hasBypasser) {
+                            alert(t("no_subgraph_alert", "⚠️ Warning\n\nYou cannot use subgraphs or bypassers in standalone mode; please use this workflow in canvas mode."));
+                            window.location.href = `apps?mode=standalone`;
+                        }
+                        
+                        if (standaloneBuilderNode) {
+                            const jsonStr = standaloneBuilderNode.widgets_values?.[0] || "{}";
+                            renderDynamicForm(JSON.parse(jsonStr));
+                        }
+                    }
+                } catch(e) { console.error("Load standalone app failed:", e); }
+                
+                initResizeLogic();
+                initLogResizeLogic();
+                handleResponsiveLayout(true); 
+                window.addEventListener('resize', () => handleResponsiveLayout(false));
+                initLightboxEvents();
+                initStandaloneWebSocket();
+                
+                restoreLogHistory(); // 恢复历史运行日志
+                return; // 无头模式初始化完成
+            }
+
+            // 下面保持你原有的在画布中打开的 (nodeId && parentWindow) 逻辑不变...
             if (nodeId && parentWindow) {
                 const parentApp = parentWindow.comfyApp;
                 const parentApi = parentWindow.comfyApi;
@@ -1150,108 +1704,6 @@
                     handleResponsiveLayout(true); 
                     window.addEventListener('resize', () => handleResponsiveLayout(false));
                     initLightboxEvents();
-                    
-                    const logContainer = document.getElementById('log-drawer-container');
-                    const logBtn = document.getElementById('console-toggle');
-                    if (localStorage.getItem('appview_log_height')) { logHeight = parseInt(localStorage.getItem('appview_log_height')); }
-                    
-                    logBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        isLogOpen = !isLogOpen;
-                        logBtn.classList.toggle('active', isLogOpen);
-                        const isDesktop = window.innerWidth >= 768;
-                        if (isLogOpen) {
-                            if (isDesktop) { logContainer.style.height = `${logHeight}px`; } else { applyMobileLayout(logHeight); }
-                            setTimeout(() => { const content = document.getElementById('log-content'); if (content) content.scrollTop = content.scrollHeight; }, 250);
-                        } else {
-                            if (isDesktop) { logContainer.style.height = '0px'; } else { applyMobileLayout(0); }
-                        }
-                    };
-                    
-                    restoreLogHistory();
-                    
-                    const themeToggleBtn = document.getElementById("theme-toggle");
-                    themeButtonText(localStorage.getItem('appview_theme') || 'system');
-                    themeToggleBtn.onclick = () => {
-                        const currentTheme = localStorage.getItem('appview_theme') || 'system';
-                        let nextTheme = 'system';
-                        if (currentTheme === 'system') nextTheme = 'light';
-                        else if (currentTheme === 'light') nextTheme = 'dark';
-                        else nextTheme = 'system';
-                        localStorage.setItem('appview_theme', nextTheme);
-                        applyTheme(nextTheme);
-                    };
-                    
-                    document.getElementById('refresh-btn').onclick = async (e) => {
-                        const splash = document.getElementById('splash-screen');
-                        if (splash) {
-                            splash.classList.remove('fade-out');
-                            const titleEl = splash.querySelector('.splash-title');
-                            if (titleEl) titleEl.innerText = t("refreshing", "Refreshing Nodes & Models");
-                        }
-                        
-                        try {
-                            if (window.comfyApp && typeof window.comfyApp.refreshComboInNodes === "function") {
-                                await window.comfyApp.refreshComboInNodes();
-                            }
-                        } catch (err) {
-                            console.warn("Refresh failed:", err);
-                        }
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        location.reload(); 
-                    };
-                                
-                    document.getElementById('unload-btn').onclick = async (e) => {
-                        const statusText = document.getElementById('status-text');
-                        try {
-                            statusText.style.color = "var(--primary)";
-                            statusText.innerText = t("unloading", "Unloading Models...");
-                            
-                            const response = await fetch('/free', {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({unload_models: true, free_memory: true})
-                            });
-                            
-                            if (response.ok) {
-                                statusText.innerText = t("unloaded", "Models and Execution Cache have been cleared");
-                            } else {
-                                statusText.style.color = "var(--red)";
-                                statusText.innerText = response.statusText;
-                            }
-                        } catch (err) {
-                            console.error("[AppBuilder] Failed to fetch: ", err);
-                        } finally {
-                            setTimeout(() => {
-                                statusText.style.color = "var(--title)";
-                                statusText.innerText = t("label_ready", "Ready");
-                            }, 1500);
-                        }
-                    };
-                                
-                    galleryData.forEach(src => { renderGalleryItem(src, false); });
-                    
-                    const clearBtn = document.getElementById('btn-clear-gallery');
-                    if (clearBtn) {
-                        clearBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            const confirmText = t("confirm_clear_gallery", "Clear generation history?");
-                            if (confirm(confirmText)) {
-                                document.querySelectorAll('.gallery-item, .gallery-item-placeholder').forEach(el => el.remove());
-                                galleryData = []; localStorage.removeItem('appview_gallery_history');
-                            }
-                        };
-                    }
-                    
-                    if (isIframe) {
-                        const closeBtn = document.getElementById('iframe-close-btn');
-                        if (closeBtn) {
-                            closeBtn.style.display = 'flex';
-                            closeBtn.onclick = (e) => { e.stopPropagation(); window.parent.postMessage({ type: "close_appview" }, "*"); };
-                        }
-                        const refreshBtn = document.getElementById('refresh-btn');
-                        if (refreshBtn) refreshBtn.style.display = 'flex';
-                    }
                 } else {
                     document.getElementById('dynamic-form').innerHTML = 
                     `<div style="text-align:center; padding: 20px; color:#f44336; line-height: 1.6;">
@@ -1376,30 +1828,80 @@
                 
                 const parentNode = window.comfyApp ? window.comfyApp.graph.getNodeById(sourceNodeId) : null;
                 const parentWidget = parentNode ? parentNode.widgets.find(w => w.name === key) : null;
-                const currentValue = parentWidget ? parentWidget.value : params.default;
+                
+                // 💡【核心修复】：三级兜底读取 (parentWidget.value -> params.value -> params.default)
+                let currentValue = parentWidget ? parentWidget.value : undefined;
+                if (currentValue === undefined || currentValue === null || currentValue === "") {
+                    currentValue = params.value !== undefined ? params.value : params.default;
+                }
                     
                 if (type === "INT" || type === "FLOAT") {
                     const isSlider = params.slider === true || params.display === "slider";
                     const precision = params.precision !== undefined ? Number(params.precision) : (type === "FLOAT" ? 3 : 0);
                     
                     if (isSlider) {
-                        const formattedInitial = Number(currentValue ?? 0).toFixed(precision);
-                        label.innerHTML = `<span>${params.name || key}</span><span class="slider-value-badge" id="badge_${key}">${formattedInitial}</span>`;
-                        
+                        const minVal = params.min !== undefined ? Number(params.min) : -999999;
+                        const maxVal = params.max !== undefined ? Number(params.max) : 999999;
+                        const step = params.step !== undefined ? Number(params.step) : (type === "INT" ? 1 : 0.1);
+
+                        let initVal = Number(currentValue ?? params.default ?? 0);
+                        if (initVal < minVal) initVal = minVal;
+                        if (initVal > maxVal) initVal = maxVal;
+
+                        const formatVal = (v) => {
+                            let n = Number(v);
+                            if (Math.abs(n) < 1e-9) n = 0;
+                            return type === "FLOAT" ? n.toFixed(precision) : String(Math.round(n));
+                        };
+
+                        label.innerHTML = `<span>${params.name || key}</span><span class="slider-value-badge" id="badge_${key}">${formatVal(initVal)}</span>`;
+
                         const input = document.createElement('input');
                         input.type = 'range';
-                        if(params.min !== undefined) input.min = params.min;
-                        if(params.max !== undefined) input.max = params.max;
-                        input.value = currentValue ?? 0;
-                        
-                        const step = params.step !== undefined ? Number(params.step) : (type === "INT" ? 1 : 0.1);
+                        input.min = minVal;
+                        input.max = maxVal;
                         input.step = step;
+                        input.value = initVal;
                         input.id = `input_${key}`;
-                        
+
+                        // 🎨 动态计算渐变进度条 (带纽子 17px 半径物理偏移修正，彻底解决右侧溢出)
+                        const updateTrack = () => {
+                            const val = Number(input.value);
+                            const rawPct = ((val - minVal) / (maxVal - minVal)) * 100;
+                            
+                            // 📏 获取 input 物理宽度，计算纽子 (Thumb 34px) 的中心点偏移
+                            const sliderWidth = input.offsetWidth || 250;
+                            const thumbRadius = 17; // 34px / 2
+                            const trackRange = Math.max(1, sliderWidth - thumbRadius * 2);
+                            
+                            // 🎯 将 0~100% 的数值比例映射为滑块纽子中心点的实际物理百分比
+                            const fillPx = thumbRadius + (rawPct / 100) * trackRange;
+                            const fillPct = (fillPx / sliderWidth) * 100;
+                            
+                            if (minVal < 0 && maxVal > 0) {
+                                // 跨正负数双向 Slider
+                                const rawZeroPct = ((-minVal) / (maxVal - minVal)) * 100;
+                                const zeroPx = thumbRadius + (rawZeroPct / 100) * trackRange;
+                                const zeroPct = (zeroPx / sliderWidth) * 100;
+                                
+                                if (val >= 0) {
+                                    input.style.background = `linear-gradient(to right, var(--panel-bg) 0%, var(--panel-bg) ${zeroPct}%, var(--second) ${zeroPct}%, var(--second) ${fillPct}%, var(--panel-bg) ${fillPct}%, var(--panel-bg) 100%)`;
+                                } else {
+                                    input.style.background = `linear-gradient(to right, var(--panel-bg) 0%, var(--panel-bg) ${fillPct}%, var(--second) ${fillPct}%, var(--second) ${zeroPct}%, var(--panel-bg) ${zeroPct}%, var(--panel-bg) 100%)`;
+                                }
+                            } else {
+                                // 单向 Slider
+                                input.style.background = `linear-gradient(to right, var(--second) 0%, var(--second) ${fillPct}%, var(--panel-bg) ${fillPct}%, var(--panel-bg) 100%)`;
+                            }
+                        };
+
                         input.addEventListener('input', () => {
                             const badge = document.getElementById(`badge_${key}`);
-                            if (badge) badge.innerText = Number(input.value).toFixed(precision);
+                            if (badge) badge.innerText = formatVal(input.value);
+                            updateTrack();
                         });
+
+                        setTimeout(updateTrack, 0);
                         group.appendChild(input);
                     } else {
                         const { wrapper, input } = createNumericInput({
@@ -1411,7 +1913,6 @@
                             precision: precision,
                             id: `input_${key}`
                         });
-                        
                         group.appendChild(wrapper);
                     }
                 } else if (type === "LORA_STACK") {
@@ -1468,7 +1969,6 @@
                     rowsContainer.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
                     container.appendChild(rowsContainer);
                     
-                    // 🎚️ 自动更新【三段式总开关】位置
                     const updateMasterSwitchState = () => {
                         const rows = rowsContainer.querySelectorAll('.lora-row');
                         if (rows.length === 0) {
@@ -1488,11 +1988,10 @@
                         } else if (activeCount === rows.length) {
                             masterToggle.className = 'tri-state-toggle all-on';
                         } else {
-                            masterToggle.className = 'tri-state-toggle partial'; // 居中位置
+                            masterToggle.className = 'tri-state-toggle partial';
                         }
                     };
                     
-                    // 💾 实时数据写回隐藏 input 和主节点
                     const updateHiddenInput = () => {
                         const loras = [];
                         const rows = rowsContainer.querySelectorAll('.lora-row');
@@ -1526,12 +2025,10 @@
                         return val.toFixed(2);
                     };
                     
-                    // ➕ 单行渲染 (完全靠 CSS 实现 4-in-1 拼接)
                     const addSingleRow = (rowData = { lora_name: "None", strength: 1.0, enabled: true }) => {
                         const row = document.createElement('div');
                         row.className = 'lora-row';
                         
-                        // A. 🗑️ 左边框圆角删除按钮
                         const btnDel = document.createElement('button');
                         btnDel.type = 'button';
                         btnDel.title = t('remove', 'Remove');
@@ -1542,17 +2039,21 @@
                             updateHiddenInput();
                         };
                         
-                        // B. 无缝平接下拉框
                         const sel = document.createElement('select');
-                        loraValues.forEach(v => {
+                        // 🔒 确保即使当前保存的 LoRA 名称不在远程列表中，也能正确加入并显示
+                        const availableOptions = [...loraValues];
+                        if (rowData.lora_name && !availableOptions.includes(rowData.lora_name)) {
+                            availableOptions.push(rowData.lora_name);
+                        }
+
+                        availableOptions.forEach(v => {
                             const opt = document.createElement('option');
                             opt.value = v; opt.innerText = v;
                             sel.appendChild(opt);
                         });
-                        sel.value = rowData.lora_name;
+                        sel.value = rowData.lora_name || "None";
                         sel.onchange = updateHiddenInput;
                         
-                        // C. 无缝平接强度输入框
                         const strInput = document.createElement('input');
                         strInput.type = 'number';
                         strInput.className = 'number-input';
@@ -1565,7 +2066,6 @@
                             updateHiddenInput();
                         };
                         
-                        // D. 右边框圆角开关
                         const toggle = document.createElement('div');
                         toggle.className = 'toggle-switch' + (rowData.enabled ? ' active' : '');
                         toggle.onclick = () => {
@@ -1580,7 +2080,6 @@
                         rowsContainer.appendChild(row);
                     };
                     
-                    // 三段式总开关点击事件
                     masterToggle.onclick = () => {
                         const rows = rowsContainer.querySelectorAll('.lora-row');
                         if (rows.length === 0) return;
@@ -1605,12 +2104,15 @@
                         updateHiddenInput();
                     };
                     
-                    // 初始化
+                    // 💡【核心解析】：解析当前的 LoRA 字符串数据并渲染行
                     let initData = [];
-                    try { initData = JSON.parse(currentValue || "[]"); } catch(e){}
+                    try { 
+                        if (typeof currentValue === 'string') initData = JSON.parse(currentValue || "[]"); 
+                        else if (Array.isArray(currentValue)) initData = currentValue;
+                    } catch(e){}
                     
                     rowsContainer.innerHTML = '';
-                    if (initData.length > 0) {
+                    if (Array.isArray(initData) && initData.length > 0) {
                         initData.forEach(item => addSingleRow(item));
                     }
                     updateHiddenInput();
@@ -1619,7 +2121,8 @@
                 } else if (type === "COMBO") {
                     const select = document.createElement('select');
                     select.id = `input_${key}`;
-                    let values = params.values || ["None"];
+                    let values = params.values ? [...params.values] : [];
+                    
                     if (params.folder) {
                         try {
                             const response = await fetch(`/appbuilder/ls/${params.folder}`);
@@ -1629,13 +2132,32 @@
                             }
                         } catch (e) { console.error("Fetch models failed:", e); }
                     }
+                    
+                    if (values.length === 0) values = ["None"];
+                    let targetValue = currentValue;
+                    if (targetValue === undefined || targetValue === null || targetValue === "") {
+                        targetValue = params.default;
+                    }
+                    
+                    if (targetValue === undefined || targetValue === null || targetValue === "") {
+                        if (params.folder) {
+                            targetValue = "None";
+                        } else {
+                            targetValue = values[0];
+                        }
+                    }
+                    
+                    if (!values.includes(targetValue)) values.unshift(targetValue);
+                    
+                    select.innerHTML = '';
                     values.forEach(val => {
                         const opt = document.createElement('option');
                         opt.value = val;
                         opt.innerText = val;
                         select.appendChild(opt);
                     });
-                    select.value = currentValue ?? params.default;
+                    
+                    select.value = targetValue;
                     group.appendChild(select);
                 } else if (type === "BOOLEAN" || type === "BYPASSER") {
                     const toggleContainer = document.createElement('div');
@@ -1875,12 +2397,10 @@
                     const parentWidget = parentNode ? parentNode.widgets.find(w => w.name === key) : null;
                     const seedWidgetIndex = parentNode ? parentNode.widgets.indexOf(parentWidget) : -1;
                     
-                    // 提取画布上的伴生控制模式控件 (control_after_generate)
                     const companionWidget = (seedWidgetIndex !== -1 && parentNode.widgets[seedWidgetIndex + 1]?.name === "control_after_generate") 
                     ? parentNode.widgets[seedWidgetIndex + 1] 
                     : null;
                     
-                    // 🌟 2. 核心：优先直接强读画布上主 Seed 控件当前的真实数值！
                     const realTimeSeed = parentWidget ? parentWidget.value : (currentValue ?? 0);
                     
                     const { wrapper: seedContainer, input } = createNumericInput({
@@ -1895,25 +2415,35 @@
                     utilGroup.className = 'seed-utility-group';
                     const gap = document.createElement('div'); gap.style.width = '6px';
                     
-                    //const seedWidgetIndex = parentNode ? parentNode.widgets.indexOf(parentWidget) : -1;
-                    //const companionWidget = (seedWidgetIndex !== -1) ? parentNode.widgets[seedWidgetIndex + 1] : null;
                     const modeActions = ["fixed", "increment", "decrement", "randomize"];
                     const modeIcons = { "fixed": "⏺️", "increment": "⤴️", "decrement": "⤵️", "randomize": "🔀" };
                     
                     const btnMode = document.createElement('button');
                     btnMode.type = 'button'; btnMode.className = 'btn-seed-util-item'; btnMode.id = `input_action_btn_${key}`;
                     
-                    const initMode = companionWidget ? (companionWidget.value || "randomize") : "randomize";
+                    // 💡【核心修复 1】：解耦画布，直接用 dataset.mode 保存内部状态，保证多模式完美循环
+                    const initMode = companionWidget ? (companionWidget.value || "randomize") : (params.seed_mode || "randomize");
+                    btnMode.dataset.mode = initMode;
                     btnMode.innerText = modeIcons[initMode] || "🔀";
                     btnMode.title = t("random_mode", "Seed Control: ") + t(`label_${initMode}`, initMode);
-                    btnMode.onclick = () => {
-                        let currentIdx = modeActions.indexOf(companionWidget ? companionWidget.value : "randomize");
+                    
+                    btnMode.onclick = (e) => {
+                        e.stopPropagation();
+                        let currentMode = btnMode.dataset.mode || "randomize";
+                        let currentIdx = modeActions.indexOf(currentMode);
                         if (currentIdx === -1) currentIdx = 3;
+                        
                         const nextIdx = (currentIdx + 1) % modeActions.length;
                         const nextMode = modeActions[nextIdx];
+                        
+                        btnMode.dataset.mode = nextMode;
                         btnMode.innerText = modeIcons[nextMode];
                         btnMode.title = t("random_mode", "Seed Control: ") + t(`label_${nextMode}`, nextMode);
-                        if (companionWidget) { companionWidget.value = nextMode; if (companionWidget.callback) companionWidget.callback(nextMode); }
+                        
+                        if (companionWidget) {
+                            companionWidget.value = nextMode;
+                            if (companionWidget.callback) companionWidget.callback(nextMode);
+                        }
                     };
                     
                     const btnReuse = document.createElement('button');
@@ -1922,11 +2452,18 @@
                     btnReuse.onclick = (e) => {
                         e.stopPropagation();
                         const lastVal = window._lastSeeds ? window._lastSeeds[key] : null;
-                        if (lastVal) {
-                            input.value = lastVal; input.dispatchEvent(new Event('change'));
-                            btnMode.innerText = "⏺️"; btnMode.title = t("random_mode", "Seed Control: ") + t(`label_fixed`, "fixed");
-                            if (companionWidget) { companionWidget.value = "fixed"; if (companionWidget.callback) companionWidget.callback("fixed"); }
-                        } 
+                        if (lastVal !== null && lastVal !== undefined) {
+                            input.value = lastVal; 
+                            input.dispatchEvent(new Event('change'));
+                            
+                            btnMode.dataset.mode = "fixed";
+                            btnMode.innerText = "⏺️"; 
+                            btnMode.title = t("random_mode", "Seed Control: ") + t(`label_fixed`, "fixed");
+                            if (companionWidget) {
+                                companionWidget.value = "fixed";
+                                if (companionWidget.callback) companionWidget.callback("fixed");
+                            }
+                        }
                     };
                     
                     const btnRand = document.createElement('button');
@@ -1936,8 +2473,13 @@
                         e.stopPropagation();
                         const randVal = Math.floor(Math.random() * 1125899906842624).toString();
                         input.value = randVal; input.dispatchEvent(new Event('change'));
-                        btnMode.innerText = "⏺️"; btnMode.title = t("random_mode", "Seed Control: ") + t(`label_fixed`, "fixed");
-                        if (companionWidget) { companionWidget.value = "fixed"; if (companionWidget.callback) companionWidget.callback("fixed"); }
+                        btnMode.dataset.mode = "fixed";
+                        btnMode.innerText = "⏺️"; 
+                        btnMode.title = t("random_mode", "Seed Control: ") + t(`label_fixed`, "fixed");
+                        if (companionWidget) {
+                            companionWidget.value = "fixed";
+                            if (companionWidget.callback) companionWidget.callback("fixed");
+                        }
                     };
                     
                     utilGroup.appendChild(btnMode); utilGroup.appendChild(btnReuse); utilGroup.appendChild(btnRand);
@@ -2300,7 +2842,7 @@
             
             const totalHeight = window.innerHeight;
             const minRightPanelHeight = 149; 
-            const minViewerHeight = 110;
+            const minViewerHeight = 145;
             
             let preferredPreviewHeight = parseInt(localStorage.getItem('appview_preview_height'));
             if (isNaN(preferredPreviewHeight)) { preferredPreviewHeight = totalHeight * 0.3; }
@@ -2346,7 +2888,8 @@
                 const totalHeight = window.innerHeight;
                 let newHeight = totalHeight - clientY;
                 if (newHeight < 100) newHeight = 100;
-                const isDesktop = window.innerWidth >= 768; const safetyMargin = isDesktop ? 220 : 260; 
+                const isDesktop = window.innerWidth >= 768;
+                const safetyMargin = isDesktop ? 220 : 295; 
                 if (newHeight > totalHeight - safetyMargin) { newHeight = totalHeight - safetyMargin; }
                 if (isDesktop) {
                     logContainer.style.height = `${newHeight}px`; logHeight = newHeight; localStorage.setItem('appview_log_height', newHeight);
@@ -2461,7 +3004,7 @@
                     let newHeight = clientY;
                     const totalHeight = window.innerHeight;
                     
-                    if (newHeight < 110) newHeight = 110;
+                    if (newHeight < 145) newHeight = 145;
                     const minRightPanelHeight = 149;
                     
                     if (isLogOpen) {
@@ -2510,6 +3053,78 @@
         }
         
         document.getElementById('btn-run').addEventListener('click', async () => {
+            // 🌟【新增】：无头独立模式提交逻辑
+            // 🌟【无头模式提交逻辑】
+            if (isStandaloneMode && standaloneWorkflowData) {
+                // 1. 处理 🔀 随机种子按钮
+                const seedActionBtns = document.querySelectorAll('[id^="input_action_btn_"]');
+                seedActionBtns.forEach(btn => {
+                    const mode = btn.dataset.mode;
+                    const seedKey = btn.id.replace('input_action_btn_', '');
+                    const seedInput = document.getElementById(`input_${seedKey}`);
+                    if (seedInput) {
+                        if (mode === 'randomize') {
+                            seedInput.value = Math.floor(Math.random() * 1125899906842624).toString();
+                            seedInput.dispatchEvent(new Event('change'));
+                        } else if (mode === 'increment') {
+                            try { seedInput.value = String(BigInt(seedInput.value || 0) + 1n); } catch(e){}
+                            seedInput.dispatchEvent(new Event('change'));
+                        } else if (mode === 'decrement') {
+                            try { seedInput.value = String(BigInt(seedInput.value || 0) - 1n); } catch(e){}
+                            seedInput.dispatchEvent(new Event('change'));
+                        }
+                    }
+                });
+
+                // 2. 核心：调用万能函数抓取当前 DOM 树上所有用户的最新输入值
+                const formValues = getAppViewFormValues();
+                console.log("📝 [AppView] 最新收集到的表单参数:", formValues);
+
+                window._lastSeeds = window._lastSeeds || {};
+                Object.keys(formValues).forEach(k => {window._lastSeeds[k] = formValues[k];});
+
+                const batchInput = document.getElementById('input-batch-count');
+                const batchCount = batchInput ? Math.max(1, parseInt(batchInput.value) || 1) : 1;
+
+                // 3. UI 状态切换
+                const statusText = document.getElementById('status-text');
+                statusText.innerText = t("label_generating", "Generating...");
+                statusText.style.color = "var(--primary)";
+                document.getElementById('progress-bar').style.width = '0%';
+                document.getElementById('btn-run').style.backgroundColor = 'var(--primary)';
+                document.getElementById('btn-run').innerText = t("button_running", "▷ Running...");
+
+                // 4. 转换 Prompt
+                const apiPrompt = await convertWorkflowToApiPrompt(standaloneWorkflowData, formValues);
+                console.log("📦 [AppView] 最终提交给后端的 API Prompt:", apiPrompt);
+
+                // 5. 提交 Prompt 到 ComfyUI 后端
+                try {
+                    const res = await fetch('/prompt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: apiPrompt,
+                            client_id: standaloneClientId
+                        })
+                    });
+                    if (!res.ok) {
+                        const errJson = await res.json();
+                        alert(t("queue_error", "⚠️ Queue Error\n\n{0}", (errJson.error?.message || res.statusText)));
+                        statusText.innerText = t("label_ready", "Ready");
+                        document.getElementById('btn-run').style.backgroundColor = '#3E8AE2';
+                        document.getElementById('btn-run').innerText = t("button_run", "▷ Run");
+                    }
+                } catch(e) { 
+                    alert(t("queue_error", "⚠️ Queue Error\n\n{0}", e.message)); 
+                    statusText.innerText = t("label_ready", "Ready");
+                    document.getElementById('btn-run').style.backgroundColor = '#3E8AE2';
+                    document.getElementById('btn-run').innerText = t("button_run", "▷ Run");
+                }
+                return;
+            }
+
+            // 下面保持你原有的在画布中提交的 window.comfyApp 逻辑不变...
             if (!window.comfyApp || !sourceNodeId) return alert(t("lost_connection","Lost connection to ComfyUI!"));
             const node = window.comfyApp.graph.getNodeById(sourceNodeId);
             if (!node) return alert(t("node_notfound", "Original node not found!"));
@@ -2654,6 +3269,91 @@
         document.getElementById('btn-stop').addEventListener('click', () => {
             fetch('/interrupt', { method: 'POST' }).catch(err => console.error("Interrupt failed:", err));
         });
+            
+        // 📊 ====== 监控面板数据与交互逻辑 ======
+        let systemMonitorTimer = null;
+        
+        function formatBytesToGB(bytes) {
+            if (!bytes || bytes === 0) return "0 GB";
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
+        }
+        
+        async function fetchAndUpdateSystemMonitor() {
+            try {
+                const res = await fetch('/appbuilder/system_stats');
+                if (!res.ok) return;
+                const data = await res.json();
+                
+                // 1. 第一行：RAM 渲染
+                const ramTotal = data.system.ram_total || 0;
+                const ramUsed = data.system.ram_used || 0;
+                const ramPct = Number(data.system.ram_utilization || 0);
+                
+                document.getElementById('mon-ram-text').innerText = `${formatBytesToGB(ramUsed)}/${formatBytesToGB(ramTotal)} ${ramPct.toFixed(1)}%`;
+                const ramBar = document.getElementById('mon-ram-bar');
+                ramBar.style.width = `${ramPct}%`;
+                ramBar.className = `monitor-bar-fill ${ramPct > 85 ? 'danger' : (ramPct > 70 ? 'warn' : '')}`;
+                
+                // 2. 第二行起：NVIDIA GPU 核心用量与 VRAM 渲染
+                const gpuContainer = document.getElementById('gpu-monitor-container');
+                gpuContainer.innerHTML = '';
+                
+                if (data.devices && data.devices.length > 0) {
+                    data.devices.forEach((dev, idx) => {
+                        const gpuCorePct = Number(dev.gpu_utilization || 0);
+                        const vramTotal = dev.vram_total || 0;
+                        const vramUsed = dev.vram_used || 0;
+                        const vramPct = Number(dev.vram_utilization || 0);
+                        let devName = dev.name || `GPU ${idx}`;
+                        if (devName.includes("cuda:")) {
+                            devName = devName.match(/cuda:\d+\s+(.*?)\s*:/)?.[1];
+                        }
+                        
+                        const gpuRow = document.createElement('div');
+                        gpuRow.className = 'monitor-row';
+                        gpuRow.innerHTML = `
+                        <div class="monitor-item">
+                            <div class="monitor-label"><span>${devName}</span><span>${gpuCorePct.toFixed(1)}%</span></div>
+                            <div class="monitor-bar-track"><div class="monitor-bar-fill ${gpuCorePct > 85 ? 'danger' : (gpuCorePct > 70 ? 'warn' : '')}" style="width: ${gpuCorePct}%;"></div></div>
+                        </div>
+                        <div class="monitor-item">
+                            <div class="monitor-label"><span>VRAM</span><span>${formatBytesToGB(vramUsed)}/${formatBytesToGB(vramTotal)} ${vramPct.toFixed(1)}%</span></div>
+                            <div class="monitor-bar-track"><div class="monitor-bar-fill ${vramPct > 85 ? 'danger' : (vramPct > 70 ? 'warn' : '')}" style="width: ${vramPct}%;"></div></div>
+                        </div>
+                    `;
+                        gpuContainer.appendChild(gpuRow);
+                    });
+                }
+            } catch (err) {
+                console.error("Fetch system stats failed:", err);
+            }
+        }
+        
+        // 绑定按钮开关
+        const monitorBtn = document.getElementById('monitor-toggle-btn');
+        const monitorPanel = document.getElementById('system-monitor-panel');
+        
+        if (monitorBtn && monitorPanel) {
+            monitorBtn.onclick = (e) => {
+                e.stopPropagation();
+                const isCollapsed = monitorPanel.classList.contains('collapsed');
+                if (isCollapsed) {
+                    monitorPanel.classList.remove('collapsed');
+                    monitorBtn.classList.add('active');
+                    fetchAndUpdateSystemMonitor();
+                    if (!systemMonitorTimer) {
+                        systemMonitorTimer = setInterval(fetchAndUpdateSystemMonitor, 1500);
+                    }
+                } else {
+                    monitorPanel.classList.add('collapsed');
+                    monitorBtn.classList.remove('active');
+                    if (systemMonitorTimer) {
+                        clearInterval(systemMonitorTimer);
+                        systemMonitorTimer = null;
+                    }
+                }
+            };
+        }
     </script>
 </body>
 </html>

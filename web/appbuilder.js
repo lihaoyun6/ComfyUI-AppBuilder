@@ -64,9 +64,19 @@ async function setupAPI() {
     window.comfyApp = app;
     window.comfyApi = api;
     
+    function isComfyuiFullyLoaded() {
+        if (!app || !app.graph) return false;
+        const isObjectInfoLoaded = typeof LiteGraph !== "undefined" && 
+        !!LiteGraph.registered_node_types && 
+        (!!LiteGraph.registered_node_types["KSampler"] || !!LiteGraph.registered_node_types["LoadImage"]);
+        const isCanvasReady = !!document.querySelector("canvas") || (app.canvas && !!app.canvas.canvas);
+        const isMenuReady = !!(document.querySelector(".comfy-menu") || document.querySelector("#comfy-user-button") || document.querySelector(".comfyui-body-left"));
+        return isObjectInfoLoaded && isCanvasReady && isMenuReady;
+    }
+    
     function tryInjectManager() {
         if (isMobile()) {
-            if (document.querySelector(".comfy-menu") && app.graph) {
+            if (isComfyuiFullyLoaded()) {
                 let wfIframe = document.createElement("iframe");
                 wfIframe.id = "app-manager-iframe";
                 wfIframe.style.cssText = `
@@ -78,7 +88,7 @@ async function setupAPI() {
                 wfIframe.src = htmlUrl.href;
                 document.body.appendChild(wfIframe);
             } else {
-                setTimeout(tryInjectManager, 500);
+                setTimeout(tryInjectManager, 300);
             }
         }
     }
@@ -86,10 +96,7 @@ async function setupAPI() {
     
     window.addEventListener("message", async (e) => {
         if (e.data && e.data.type === "close_appview") {
-            if (isMobile()) {
-                await saveActiveWorkflow();
-                setTimeout(async () => { await closeActiveWorkflow(); }, 100);
-            }
+            if (isMobile()) await closeActiveWorkflow();
             const iframe = document.getElementById("appview-iframe");
             if (iframe) iframe.remove(); 
         }
@@ -97,6 +104,10 @@ async function setupAPI() {
         if (e.data && e.data.type === "close_app_manager") {
             const iframe = document.getElementById("app-manager-iframe");
             if (iframe) iframe.remove();
+        }
+        
+        if (e.data && e.data.type === "save_workflow") {
+            await saveActiveWorkflow();
         }
         
         if (e.data && e.data.type === "load_workflow") {
@@ -469,6 +480,49 @@ function openConfigOverlay(nodeId) {
     `;
     overlay.appendChild(iframe); document.body.appendChild(overlay);
     window.closeConfigOverlay = () => { document.body.removeChild(overlay); delete window.closeConfigOverlay; };
+}
+                
+// 💡【新增函数 1】：递归穿透 Subgraph (子图)，找到内部真实的底层节点与槽位
+function resolveInnerTargetSlot(node, slotIndex) {
+    if (!node) return null;
+    if (node.subgraph && node.subgraph._nodes) {
+        const inputSlot = node.inputs ? node.inputs[slotIndex] : null;
+        if (inputSlot && inputSlot.link !== null) {
+            const innerLink = node.subgraph.links ? node.subgraph.links[inputSlot.link] : null;
+            if (innerLink) {
+                const innerTargetNode = node.subgraph.getNodeById(innerLink.target_id);
+                if (innerTargetNode) {
+                    return resolveInnerTargetSlot(innerTargetNode, innerLink.target_slot);
+                }
+            }
+        }
+    }
+    return { node, slotIndex };
+}
+                
+// 💡【新增函数 2】：深度寻找节点上的 Widget 控件（支持 unet_name_1 -> unet_name 智能匹配）
+function findWidgetOnNode(node, slot) {
+    if (!node || !node.widgets) return null;
+    const slotName = slot.name;
+    const slotLabel = slot.label;
+    const widgetName = slot.widget?.name;
+    
+    // 1. 精确名称查找
+    let w = node.widgets.find(item => item.name === widgetName || item.name === slotName || item.name === slotLabel);
+    if (w) return w;
+    
+    // 2. 模糊剥离后缀查找 (如 unet_name_1 搜寻 unet_name)
+    if (slotLabel) {
+        w = node.widgets.find(item => item.name.startsWith(slotLabel) || slotLabel.startsWith(item.name));
+        if (w) return w;
+    }
+    if (slotName) {
+        const baseName = slotName.replace(/_\d+$/, ''); // 剥离末尾的 _1
+        w = node.widgets.find(item => item.name === baseName || item.name.startsWith(baseName));
+        if (w) return w;
+    }
+    
+    return null;
 }
                 
 setupAPI();
@@ -1111,81 +1165,141 @@ app.registerExtension({
                 this.outputs.forEach((output, outIdx) => {
                     if (output.name !== "any" || !output.links || output.links.length === 0) return; 
                     const link = app.graph.links[output.links[0]]; if (!link) return;
-                    const targetNode = app.graph.getNodeById(link.target_id); if (!targetNode || !targetNode.inputs) return;
+                    let targetNode = app.graph.getNodeById(link.target_id); if (!targetNode || !targetNode.inputs) return;
+                    let targetSlotIdx = link.target_slot;
                     
-                    const targetSlot = targetNode.inputs[link.target_slot];
+                    // 1. 穿透 Subgraph (子图) 寻找内部真实节点
+                    const resolved = resolveInnerTargetSlot(targetNode, targetSlotIdx);
+                    if (resolved && resolved.node) {
+                        targetNode = resolved.node;
+                        targetSlotIdx = resolved.slotIndex;
+                    }
+                    
+                    const targetSlot = targetNode.inputs[targetSlotIdx];
+                    if (!targetSlot) return;
                     const targetSlotName = targetSlot.name;
                     
                     let pType = "STRING"; let pOpts = {}; let pValues = undefined; let isSupported = false;
+                    
                     const shortTitleWidget = this.widgets?.find(w => w.name === "Short Title");
                     const shortTitle = shortTitleWidget ? shortTitleWidget.value : false;
                     const displayName = shortTitle ? targetSlotName : `${targetSlotName} (${targetNode.title || targetNode.type})`;
                     
+                    const liveWidget = findWidgetOnNode(targetNode, targetSlot);
+                    
+                    // 🛡️ 第一层校验：直接检查 targetSlot 槽位本身声明的类型
+                    if (targetSlot) {
+                        const rawType = targetSlot.type;
+                        if (Array.isArray(rawType)) {
+                            pType = "COMBO"; pValues = rawType; isSupported = true;
+                        } else if (typeof rawType === "string") {
+                            const uType = rawType.toUpperCase();
+                            if (["INT", "FLOAT", "BOOLEAN", "STRING", "COMBO"].includes(uType)) {
+                                pType = uType; isSupported = true;
+                            } else if (uType === "NUMBER") {
+                                pType = "FLOAT"; isSupported = true;
+                            } else if (uType === "*" || uType === "") {
+                                pType = "STRING"; isSupported = true; // 允许通配符透传
+                            }
+                        }
+                    }
+                    
+                    // 🛡️ 第二层校验：从静态节点定义 nodeDefs 查找类型
                     const nodeDefs = app.nodeDefs || app.node_defs || (app.extensionManager ? app.extensionManager.nodeDefs : null);
                     const nodeDef = (nodeDefs ? nodeDefs[targetNode.type] : null) || targetNode.constructor?.nodeData;
                     
                     if (nodeDef && nodeDef.input) {
-                        let paramDef = nodeDef.input.required?.[targetSlotName] || nodeDef.input.optional?.[targetSlotName];
+                        const baseSlotName = targetSlotName.replace(/_\d+$/, ''); // 剥离 _1 后缀
+                        let paramDef = nodeDef.input.required?.[targetSlotName] || nodeDef.input.optional?.[targetSlotName] ||
+                        nodeDef.input.required?.[baseSlotName] || nodeDef.input.optional?.[baseSlotName] ||
+                        (targetSlot.label ? (nodeDef.input.required?.[targetSlot.label] || nodeDef.input.optional?.[targetSlot.label]) : null);
+                        
                         if (paramDef) {
-                            const typeInfo = paramDef[0]; pOpts = paramDef[1] || {};
+                            const typeInfo = paramDef[0]; pOpts = { ...pOpts, ...(paramDef[1] || {}) };
                             const optionsList = pOpts.options || pOpts.values;
                             
-                            if (Array.isArray(typeInfo)) { 
-                                pType = "COMBO"; pValues = typeInfo; isSupported = true; 
+                            if (Array.isArray(typeInfo)) {
+                                pType = "COMBO"; pValues = typeInfo; isSupported = true;
                             } else if (typeInfo === "COMBO" || (pOpts && Array.isArray(optionsList))) {
-                                pType = "COMBO"; pValues = optionsList; isSupported = true; 
-                            }
-                            else if (["INT", "FLOAT", "BOOLEAN", "STRING"].includes(String(typeInfo).toUpperCase())) {
-                                pType = String(typeInfo).toUpperCase(); isSupported = true; 
+                                pType = "COMBO"; pValues = optionsList; isSupported = true;
+                            } else if (["INT", "FLOAT", "BOOLEAN", "STRING"].includes(String(typeInfo).toUpperCase())) {
+                                pType = String(typeInfo).toUpperCase(); isSupported = true;
                             }
                         }
                     }
                     
-                    if (pType === "STRING" && pValues === undefined) {
-                        const slotWidget = targetSlot ? targetSlot.widget : null;
-                        const liveWidget = slotWidget || targetNode.widgets?.find(w => w.name === targetSlotName);
-                        if (liveWidget && liveWidget.type !== "converted-widget" && liveWidget.type !== "CONVERTED-WIDGET") {
-                            const wType = String(liveWidget._origType || liveWidget.type || "").toUpperCase();
-                            const widgetOptions = liveWidget.options || {};
-                            const liveOptionsList = widgetOptions.options || widgetOptions.values;
-                            if (wType === "COMBO" || Array.isArray(liveOptionsList)) { pType = "COMBO"; pValues = liveOptionsList; isSupported = true; }
+                    // 🛡️ 第三层校验：深度解析 liveWidget 控件本身属性 (包含 converted-widget)
+                    if (liveWidget) {
+                        const wType = String(liveWidget._origType || liveWidget.type || "").toUpperCase();
+                        const opts = liveWidget.options || liveWidget._origOptions || {};
+                        const liveOptsList = opts.options || opts.values;
+                        
+                        pOpts = { ...opts, ...pOpts };
+                        
+                        if (Array.isArray(liveOptsList) && liveOptsList.length > 0) {
+                            pType = "COMBO"; pValues = liveOptsList; isSupported = true;
+                        } else if (wType === "TOGGLE" || wType === "BOOLEAN") {
+                            pType = "BOOLEAN"; isSupported = true;
+                        } else if (wType === "NUMBER" || wType === "SLIDER") {
+                            pType = (pOpts.precision === 0 || opts.precision === 0) ? "INT" : "FLOAT";
+                            isSupported = true;
+                        } else if (wType === "TEXT" || wType === "CUSTOMTEXT" || wType === "STRING" || wType === "CONVERTED-WIDGET") {
+                            if (!isSupported) { pType = "STRING"; isSupported = true; }
+                        }
+                        
+                        if (liveWidget.value !== undefined) {
+                            pOpts.default = liveWidget.value;
                         }
                     }
                     
+                    // 🛡️ 第四层兜底：对于槽位名称包含显式关键词的，直接放行
+                    /*const sNameLower = (targetSlotName + " " + (targetSlot.label || "")).toLowerCase();
+                    if (!isSupported) {
+                        if (sNameLower.includes("text") || sNameLower.includes("prompt") || sNameLower.includes("string") || sNameLower.includes("name")) {
+                            pType = "STRING"; isSupported = true;
+                        } else if (sNameLower.includes("seed")) {
+                            pType = "SEED"; isSupported = true;
+                        } else if (sNameLower.includes("step") || sNameLower.includes("width") || sNameLower.includes("height") || sNameLower.includes("batch")) {
+                            pType = "INT"; isSupported = true;
+                        } else if (sNameLower.includes("cfg") || sNameLower.includes("denoise") || sNameLower.includes("strength")) {
+                            pType = "FLOAT"; isSupported = true;
+                        }
+                    }*/
+                    
+                    // 💡 智能模型文件夹归类
                     const tClass = String(targetNode.type).toLowerCase();
                     const tSlot = String(targetSlotName).toLowerCase();
+                    const sLabel = String(targetSlot.label || "").toLowerCase();
+                    
                     if (pType === "COMBO") {
                         isSupported = true;
                         if (tClass.includes("load") && (tSlot.includes("image") || tSlot.includes("video") || tSlot.includes("file"))) {
                             pType = "UPLOADER";
-                        } else if ((tClass === "checkpointloader" || tClass === "checkpointloadersimple") && tSlot === "ckpt_name") {
-                            pOpts.folder = "checkpoints";
-                        } else if (tClass === "checkpointloader" && tSlot === "ckpt_name") {
-                            pOpts.folder = "checkpoints";
-                        } else if (tClass === "loraloader" && tSlot === "lora_name") {
-                            pOpts.folder = "loras";
-                        } else if (tClass === "vaeloader" && tSlot === "vae_name") {
-                            pOpts.folder = "vae";
-                        } else if (tClass === "unetloader" && tSlot === "unet_name") {
+                        } else if (tSlot.includes("unet") || sLabel.includes("unet") || tSlot.includes("diffusion") || sLabel.includes("diffusion")) {
                             pOpts.folder = "diffusion_models";
-                        } else if (tClass === "clipvisionloader" && tSlot === "clip_name") {
-                            pOpts.folder = "clip_vision";
-                        } else if (tClass === "stylemodelloader" && tSlot === "style_model_name") {
-                            pOpts.folder = "style_models";
-                        } else if (tClass.includes("cliploader") && tSlot.includes("clip_name")) {
+                        } else if (tSlot.includes("ckpt") || sLabel.includes("ckpt") || tSlot.includes("checkpoint") || sLabel.includes("checkpoint")) {
+                            pOpts.folder = "checkpoints";
+                        } else if (tSlot.includes("lora") || sLabel.includes("lora")) {
+                            pOpts.folder = "loras";
+                        } else if (tSlot.includes("vae") || sLabel.includes("vae")) {
+                            pOpts.folder = "vae";
+                        } else if (tSlot.includes("clip") || sLabel.includes("clip")) {
                             pOpts.folder = "text_encoders";
-                        } else if (tClass.includes("gligenloader") && tSlot.includes("gligen_name")) {
-                            pOpts.folder = "gligen";
-                        } else if (tClass.includes("controlnetloader") && tSlot === "control_net_name") {
+                        } else if (tSlot.includes("control") || sLabel.includes("control") || tSlot.includes("controlnet")) {
                             pOpts.folder = "controlnet";
+                        } else if (tSlot.includes("style") || sLabel.includes("style")) {
+                            pOpts.folder = "style_models";
+                        } else if (tSlot.includes("gligen") || sLabel.includes("gligen")) {
+                            pOpts.folder = "gligen";
                         }
-                    } else if (pType === "INT" && tSlot.includes("seed")) {
+                    } else if (pType === "INT" && (tSlot.includes("seed") || sLabel.includes("seed"))) {
                         pType = "SEED"; isSupported = true;
-                    } else if (tClass.includes("lorastack") && tSlot.includes("lora_stack")) {
+                    } else if (tClass.includes("lorastack") && (tSlot.includes("lora_stack") || sLabel.includes("lora_stack"))) {
                         pType = "LORA_STACK"; pOpts.folder = "loras";
                         pOpts.min = 1; pOpts.max = 128; isSupported = true;
                     }
                     
+                    // ❌ 只有在四层判定全不通过时，才判定为不支持（比如真正的 MODEL / LATENT 物理模型槽位）
                     if (!isSupported) {
                         const illegalType = targetSlot.type || "Unknown";
                         alert(`⚠️ Connection Rejected\n\nUnsupported connection type "${illegalType}"`);
@@ -1207,11 +1321,8 @@ app.registerExtension({
                     if (config[key]) key = `${key}_${outIdx}`;
                     
                     let targetLiveValue = undefined;
-                    if (targetNode.widgets) {
-                        const targetW = targetNode.widgets.find(w => w.name === targetSlotName);
-                        if (targetW && targetW.value !== undefined) {
-                            targetLiveValue = targetW.value;
-                        }
+                    if (liveWidget && liveWidget.value !== undefined) {
+                        targetLiveValue = liveWidget.value;
                     }
                     
                     const activeWidget = this.widgets?.find(w => w.name === key);
@@ -1225,17 +1336,17 @@ app.registerExtension({
                         type: pType, 
                         name: displayName, 
                         default: pOpts.default, 
-                        value: activeValue, 
-                        min: pOpts.min, 
-                        max: pOpts.max, 
-                        step: pOpts.step, 
-                        precision: derivedPrecision, 
-                        display: pOpts.display, 
-                        values: pValues, 
-                        multiline: !!pOpts.multiline, 
-                        _slot: outIdx,
-                        _node_id: targetNode.id,
-                        folder: pOpts.folder 
+                            value: activeValue, 
+                            min: pOpts.min, 
+                            max: pOpts.max, 
+                            step: pOpts.step, 
+                            precision: derivedPrecision, 
+                            display: pOpts.display, 
+                            values: pValues, 
+                            multiline: !!pOpts.multiline, 
+                            _slot: outIdx,
+                            _node_id: targetNode.id,
+                            folder: pOpts.folder 
                     };
                     validKeys.push(key);
                 });

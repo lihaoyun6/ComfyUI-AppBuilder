@@ -18,7 +18,6 @@ async function loadI18n() {
             locale = parentWindow.comfyApp.ui.settings.getSettingValue("Comfy.Locale") || "en";
         }
     } catch (e) { console.warn(e); }
-    
     if (locale.startsWith("en")) return;
     
     try {
