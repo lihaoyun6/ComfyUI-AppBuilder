@@ -1179,7 +1179,11 @@ app.registerExtension({
                     if (!targetSlot) return;
                     const targetSlotName = targetSlot.name;
                     
-                    let pType = "STRING"; let pOpts = {}; let pValues = undefined; let isSupported = false;
+                    let pType = "STRING";
+                    let pOpts = {};
+                    let pValues = undefined;
+                    let isSupported = false;
+                    let pythonPresetStep = undefined; 
                     
                     const shortTitleWidget = this.widgets?.find(w => w.name === "Short Title");
                     const shortTitle = shortTitleWidget ? shortTitleWidget.value : false;
@@ -1216,6 +1220,7 @@ app.registerExtension({
                         
                         if (paramDef) {
                             const typeInfo = paramDef[0]; pOpts = { ...pOpts, ...(paramDef[1] || {}) };
+                            if (paramDef[1] && paramDef[1].step !== undefined) pythonPresetStep = paramDef[1].step; // 👈 2. 记录 Python 真实的预设 (如 8)
                             const optionsList = pOpts.options || pOpts.values;
                             
                             if (Array.isArray(typeInfo)) {
@@ -1332,21 +1337,24 @@ app.registerExtension({
                     const savedValue = (isSameNode && oldConfig[key].value !== undefined) ? oldConfig[key].value : fallbackValue;
                     const activeValue = isSameNode && activeWidget ? activeWidget.value : savedValue;
                     
+                    let finalStep = pOpts.step;
+                    if (pType === "INT") finalStep = (pythonPresetStep !== undefined && pythonPresetStep !== null) ? pythonPresetStep : 1;
+
                     config[key] = { 
                         type: pType, 
                         name: displayName, 
                         default: pOpts.default, 
-                            value: activeValue, 
-                            min: pOpts.min, 
-                            max: pOpts.max, 
-                            step: pOpts.step, 
-                            precision: derivedPrecision, 
-                            display: pOpts.display, 
-                            values: pValues, 
-                            multiline: !!pOpts.multiline, 
-                            _slot: outIdx,
-                            _node_id: targetNode.id,
-                            folder: pOpts.folder 
+                        value: activeValue, 
+                        min: pOpts.min, 
+                        max: pOpts.max, 
+                        step: finalStep, 
+                        precision: derivedPrecision, 
+                        display: pOpts.display, 
+                        values: pValues, 
+                        multiline: !!pOpts.multiline, 
+                        _slot: outIdx,
+                        _node_id: targetNode.id,
+                        folder: pOpts.folder 
                     };
                     validKeys.push(key);
                 });

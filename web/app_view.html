@@ -616,11 +616,9 @@
         .header-btn:hover { background-color: var(--border); }
         
         .header-status-badge {
-            background-color: var(--panel-bg); color: var(--title);
-            height: 100%; padding: 0 10px; font-size: 12px; font-weight: bold;
-            display: flex; align-items: center; justify-content: center; pointer-events: auto;
-            flex-shrink: 1; min-width: 0; display: block; line-height: 28px; text-align: center;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            background-color: var(--panel-bg); color: var(--title); font-size: 12px; font-weight: bold;
+            height: 100%; padding: 0 10px; line-height: 27px; text-align: center;
+            flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         
         /* 1. 当鼠标/焦点不在输入框内时：开启左侧省略号黑科技 */
@@ -649,8 +647,9 @@
             background-color: var(--border); border: 1.5px solid var(--border);
             height: 30px; border-radius: 15px; display: flex; align-items: center;
             pointer-events: auto; overflow: hidden; box-shadow: 0px 0px 30px var(--shadow);
-            flex-shrink: 1; min-width: 0; gap: 1.5px;
+            gap: 1.5px; flex-shrink: 1; min-width: 0;
         }
+        .header-status-group .monitor-btn { flex-shrink: 0 !important; width: 2rem !important; }
         .header-status-group .monitor-btn:hover { background-color: var(--border); color: var(--text); }
         .header-status-group .monitor-btn.active { background-color: var(--primary); color: #fff; }
         
@@ -658,12 +657,12 @@
         .system-monitor-panel {
             background-color: var(--bg); border-bottom: 1.5px solid var(--border); display: flex; flex-direction: column;
             transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
-            padding: 8px 12px 9px 12px; gap: 8px; max-height: 260px; overflow: hidden; opacity: 1; z-index: 99; flex-shrink: 0; width: 100%;
+            padding: 8px 12px 9px 12px; gap: 6px; overflow: hidden; z-index: 99; flex-shrink: 0; width: 100%;
         }
         .system-monitor-panel.collapsed { max-height: 0; padding-top: 0; padding-bottom: 0; border-bottom: none; pointer-events: none; }
         .monitor-row { display: flex; gap: 10px; width: 100%; align-items: center; }
         .monitor-item { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        .monitor-label { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; color: var(--title); font-family: monospace; }
+        .monitor-label { display: flex; justify-content: space-between; font-size: 10px; font-weight: bold; color: var(--title); font-family: monospace; }
         .monitor-label span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .monitor-bar-track { height: 7px; background-color: var(--border); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
         .monitor-bar-fill { height: 100%; background-color: var(--primary); border-radius: 3px; transition: width 0.3s ease; }
@@ -825,7 +824,7 @@
                         <button class="header-btn" id="iframe-close-btn" title-i18n="close_app_view" style="display: none;" title="Close App View">
                             <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
                         </button>
-                        <button class="header-btn" id="refresh-btn" title-i18n="refresh_nodes" title="Refresh Node Definitions">
+                        <button class="header-btn" id="refresh-btn" title-i18n="refresh_nodes" style="display: none;" title="Refresh Node Definitions">
                             <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rotate-cw-icon lucide-rotate-cw"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
                         </button>
                         <button class="header-btn" id="save-btn" title-i18n="save_app" title="Save Changes">
@@ -841,7 +840,7 @@
                     <div class="header-status-group">
                         <span class="header-status-badge" id="status-text" data-i18n="label_ready">Ready</span>
                         <button class="monitor-btn header-btn" id="monitor-toggle-btn" title="Toggle System Monitor">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity-icon lucide-activity"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-activity-icon lucide-activity"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>
                         </button>
                     </div>
                 </div>
@@ -1034,9 +1033,14 @@
                         if (!spec || !Array.isArray(spec)) return false;
                         if (Array.isArray(spec[0])) return true;
                         const t = String(spec[0]).toUpperCase();
-                        return ["INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", "NUMBER"].includes(t);
+                        
+                        // 增加对 COMFY_DYNAMICCOMBO_V3 等新版动态/复合控件的兼容识别
+                        return ["INT", "FLOAT", "STRING", "BOOLEAN", "COMBO", "NUMBER"].includes(t) 
+                        || t.includes("COMBO") 
+                        || t.startsWith("COMFY_");
                     };
 
+                    // 🌟 修复后（支持 DynamicCombo 嵌套子参数展开为 dot-notation）：
                     for (const [inputName, inputSpec] of Object.entries(allInputDefs)) {
                         if (isWidgetSpec(inputSpec) && widgetIdx < widgetValues.length) {
                             let val = widgetValues[widgetIdx++];
@@ -1044,6 +1048,30 @@
                                 if (widgetIdx < widgetValues.length) val = widgetValues[widgetIdx++];
                             }
                             nodePrompt.inputs[inputName] = val;
+                            
+                            // 🌟 处理 DynamicCombo 复合控件的点号子参数展开 (例如 format.bit_depth / format.input_color_space)
+                            const typeStr = String(inputSpec[0]).toUpperCase();
+                            if (typeStr.includes("DYNAMICCOMBO") || typeStr.includes("DYNAMIC_COMBO")) {
+                                const comboOpts = inputSpec[1]?.options;
+                                if (Array.isArray(comboOpts)) {
+                                    const selectedKey = (typeof val === "object" && val !== null) ? (val.key || val.name || val.value) : val;
+                                    const selectedOpt = comboOpts.find(o => o.key === selectedKey || o.name === selectedKey);
+                                    
+                                    if (selectedOpt && selectedOpt.inputs) {
+                                        const subReq = selectedOpt.inputs.required || {};
+                                        const subOpt = selectedOpt.inputs.optional || {};
+                                        const allSubDefs = { ...subReq, ...subOpt };
+                                        
+                                        for (const [subName, subSpec] of Object.entries(allSubDefs)) {
+                                            if (widgetIdx < widgetValues.length) {
+                                                let subVal = widgetValues[widgetIdx++];
+                                                // 生成 ComfyUI 要求的 "format.bit_depth" 格式
+                                                nodePrompt.inputs[`${inputName}.${subName}`] = subVal;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1491,29 +1519,6 @@
                 };
             }
                         
-            document.getElementById('refresh-btn').onclick = async (e) => {
-                if (!isStandaloneMode) {
-                    if (splash) {
-                        splash.classList.remove('fade-out');
-                        const titleEl = splash.querySelector('.splash-title');
-                        const iconEl = splash.querySelector('.splash-icon');
-                        iconEl.classList.add("loading");
-                        iconEl.innerText = "⏳";
-                        titleEl.innerText = t("refreshing", "Loading Nodes & Models");
-                    }
-                    
-                    try {
-                        if (window.comfyApp && typeof window.comfyApp.refreshComboInNodes === "function") {
-                            await window.comfyApp.refreshComboInNodes();
-                        }
-                    } catch (err) {
-                        console.warn("Refresh failed:", err);
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
-                location.reload(); 
-            };
-                        
             // 💾 绑定无头模式原位保存按钮
             document.getElementById('save-btn').onclick = async (e) => {
                 e.stopPropagation();
@@ -1690,6 +1695,27 @@
                 const parentApi = parentWindow.comfyApi;
                 window.comfyApp = parentApp;
                 window.comfyApi = parentApi;
+                
+                document.getElementById('refresh-btn').onclick = async (e) => {
+                    if (splash) {
+                        splash.classList.remove('fade-out');
+                        const titleEl = splash.querySelector('.splash-title');
+                        const iconEl = splash.querySelector('.splash-icon');
+                        iconEl.classList.add("loading");
+                        iconEl.innerText = "⏳";
+                        titleEl.innerText = t("refreshing", "Loading Nodes & Models");
+                    }
+                    
+                    try {
+                        if (window.comfyApp && typeof window.comfyApp.refreshComboInNodes === "function") {
+                            await window.comfyApp.refreshComboInNodes();
+                        }
+                    } catch (err) {
+                        console.warn("Refresh failed:", err);
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    location.reload(); 
+                };
                 
                 const parentNode = parentApp.graph.getNodeById(nodeId);
                 if (parentNode) {
