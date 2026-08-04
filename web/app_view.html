@@ -69,6 +69,10 @@
             font-size: 24px; font-weight: bold; color: var(--text); letter-spacing: 1.5px;
             font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui,sans-serif;
         }
+        .splash-subtitle {
+            font-size: 13px; font-weight: bold; color: var(--title); display: none;
+            font-family: ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui,sans-serif;
+        }
         
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
@@ -669,6 +673,64 @@
         .monitor-bar-fill.warn { background-color: #ff9800; }
         .monitor-bar-fill.danger { background-color: var(--red); }
         
+        /* 🖌️ Uploader 预览图右上角的画笔按钮 */
+        .uploader-preview-box { position: relative; }
+        .uploader-mask-btn {
+            position: absolute; top: 8px; right: 8px; z-index: 10; width: 36px; height: 36px; border-radius: 50%;
+            background: var(--bg-badge); border: 1px solid var(--border); color: #fff; font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); 
+        }
+        .uploader-mask-btn:hover { background: var(--primary); }
+        
+        /* 🖌️ 遮罩编辑器 Modal 样式 */
+        .mask-modal-content {
+            max-width: 900px !important; height: 85vh; max-height: 850px;
+            display: flex; flex-direction: column; padding: 12px !important; gap: 10px !important;
+        }
+        .mask-workspace {
+            flex: 1; min-height: 0; background: #0a0a0a; border: 1px solid var(--border);
+            border-radius: 8px; overflow: hidden; display: flex;
+            align-items: center; justify-content: center; position: relative;
+            touch-action: none; user-select: none;
+        }
+        .mask-canvas-wrapper {
+            position: relative; display: inline-block; max-width: 100%; max-height: 100%;
+        }
+        .mask-bg-img {
+            display: block; max-width: 100%; max-height: 70dvh; width: auto; height: auto;
+            vertical-align: middle; pointer-events: none; -webkit-user-drag: none;
+        }
+        .mask-draw-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            cursor: crosshair; touch-action: none; opacity: 0.4 !important;
+        }
+        .mask-brush-cursor {
+            position: absolute; pointer-events: none; border: 2px solid rgba(255,255,255,0.8);
+            border-radius: 50%; transform: translate(-50%, -50%); display: none;
+            box-shadow: 0 0 4px rgba(0,0,0,0.5); z-index: 20;
+        }
+        .mask-toolbar {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 8px; padding: 8px; background: var(--bg);
+            border-radius: 8px; border: 1px solid var(--border);
+        }
+        .mask-tools-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .mask-tool-btn {
+            background: var(--panel-bg); border: 1px solid var(--border); color: var(--text);
+            padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;
+            display: flex; align-items: center; gap: 4px; height: 36px;
+        }
+        .mask-tool-btn:hover:not(:disabled) { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .mask-tool-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .mask-tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .mask-tool-btn.btn-danger:hover { background: var(--red); border-color: var(--red); color: #fff; }
+        .mask-divider { width: 1px; height: 20px; background: var(--border); }
+        .mask-slider-label {
+            display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--title); font-weight: bold;
+        }
+        .mask-slider-label input[type="range"] { width: 200px; height: 36px; }
+        .mask-actions-group { display: flex; gap: 10px; width: 100%; justify-content: flex-end; border-top: 1px solid var(--border); padding-top: 6px; }
+        
         @media (min-width: 768px) {
             .main-layout { flex-direction: row; }
             .viewer-container { flex: 1 1 auto; min-width: 0; height: 100%; }
@@ -693,6 +755,10 @@
             .bottom-action-bar { position: absolute; width: 100%; height: 100px; } 
             .button-group { display: flex; gap: 10px; padding-left: 0px; padding-top: 30px; }
             .bottom-action-bar, .gallery-container, .resizer { border-radius: 0px; box-shadow: none; }
+            .mask-actions-group {
+                width: auto !important; justify-content: flex-start !important; border: none !important; padding: 0px !important;
+            }
+            #last-divider { display: flex !important; }
         }
     </style>
     <script>
@@ -799,6 +865,7 @@
         <div class="splash-content">
             <span class="splash-icon">🎛️</span>
             <div class="splash-title">ComfyUI AppBuilder</div>
+            <div class="splash-subtitle" data-i18n="still-loading">(The first access after startup may take longer)</div>
         </div>
     </div>
     
@@ -905,6 +972,59 @@
         <img class="lightbox-content" id="lightbox-img">
         <button class="lightbox-arrow lightbox-arrow-right" id="lightbox-next">&#10095;</button>
     </div>
+    
+    <!-- 🖌️ 遮罩编辑器模态框 (Mask Editor Modal) -->
+    <div id="mask-modal" class="modal">
+        <div class="modal-content mask-modal-content">
+            <div class="modal-header">
+                <span data-i18n="mask_editor">🖌️ Mask Editor</span>
+                <span class="modal-close" id="mask-modal-close">&times;</span>
+            </div>
+            
+            <div class="mask-workspace" id="mask-workspace">
+                <div class="mask-canvas-wrapper" id="mask-canvas-wrapper">
+                    <img id="mask-bg-img" class="mask-bg-img">
+                    <canvas id="mask-draw-canvas" class="mask-draw-canvas"></canvas>
+                    <div id="mask-brush-cursor" class="mask-brush-cursor"></div>
+                </div>
+            </div>
+            
+            <div class="mask-toolbar">
+                <div class="mask-tools-group">
+                    <button type="button" class="mask-tool-btn" id="mask-btn-undo" title="Undo (Ctrl+Z)" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-corner-up-left-icon lucide-corner-up-left"><path d="M20 20v-7a4 4 0 0 0-4-4H4"/><path d="M9 14 4 9l5-5"/></svg>
+                    </button>
+                    <button type="button" class="mask-tool-btn" id="mask-btn-redo" title="Redo (Ctrl+Y)" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-corner-up-right-icon lucide-corner-up-right"><path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+                    </button>
+                    <span class="mask-divider"></span>
+                    <button type="button" class="mask-tool-btn active" id="mask-btn-draw">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-sparkles-icon lucide-pencil-sparkles"><path d="M10 3H8"/><path d="m15.007 5.008 3.987 3.986"/><path d="M20 15v4"/><path d="M21.174 6.813a2.82 2.82 0 0 0-3.986-3.987L3.842 16.175a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="M22 17h-4"/><path d="M4 5v4"/><path d="M6 7H2"/><path d="M9 2v2"/></svg>
+                    </button>
+                    <button type="button" class="mask-tool-btn" id="mask-btn-erase">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eraser-icon lucide-eraser"><path d="M21 21H8a2 2 0 0 1-1.42-.587l-3.994-3.999a2 2 0 0 1 0-2.828l10-10a2 2 0 0 1 2.829 0l5.999 6a2 2 0 0 1 0 2.828L12.834 21"/><path d="m5.082 11.09 8.828 8.828"/></svg>
+                    </button>
+                    <button type="button" class="mask-tool-btn" id="mask-btn-invert">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot-icon lucide-circle-dot"><path d="M 12 2 A 10 10 0 0 0 12 22 Z" fill="currentColor"/><circle cx="12" cy="12" r="10"/></svg>
+                    </button>
+                    <span class="mask-divider"></span>
+                    <button type="button" class="mask-tool-btn btn-danger" id="mask-btn-clear">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash2-icon lucide-trash-2"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                    <span class="mask-divider" id="last-divider" style="display: none;"></span>
+                    <label class="mask-slider-label">
+                        <span data-i18n="pen-size">Size:</span>
+                        <input type="range" id="mask-brush-size" min="5" max="150" value="30">
+                        <span id="mask-brush-size-val" style="font-family: monospace;">30px</span>
+                    </label>
+                </div>
+                <div class="mask-actions-group">
+                    <button type="button" class="modal-btn modal-btn-cancel" id="mask-btn-cancel" data-i18n="cancel">Cancel</button>
+                    <button type="button" class="modal-btn modal-btn-save" id="mask-btn-save" data-i18n="label_save">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         const standaloneParams = new URLSearchParams(window.location.search);
         const appFileName = standaloneParams.get('app');
@@ -913,9 +1033,17 @@
             const splash = document.getElementById('splash-screen');
             const iconEl = splash.querySelector('.splash-icon');
             const titleEl = splash.querySelector('.splash-title');
+            const subtitleEl = splash.querySelector('.splash-subtitle');
             iconEl.classList.add("loading");
             iconEl.innerText = "⏳";
             titleEl.innerText = "Loading Nodes & Models";
+            setTimeout(() => {
+                titleEl.innerText = "Still Loading...";
+                subtitleEl.style.display = "block";
+            }, 5000);
+            setTimeout(() => {
+                titleEl.innerText = "Loading Nodes & Models";
+            },10000);
         }
     </script>
     <script type="text/javascript" src="./i18n/i18n.js"></script>
@@ -1696,7 +1824,9 @@
                 window.comfyApp = parentApp;
                 window.comfyApi = parentApi;
                 
-                document.getElementById('refresh-btn').onclick = async (e) => {
+                const refreshBtn = document.getElementById('refresh-btn');
+                refreshBtn.style.display = "flex";
+                refreshBtn.onclick = async (e) => {
                     if (splash) {
                         splash.classList.remove('fade-out');
                         const titleEl = splash.querySelector('.splash-title');
@@ -2377,6 +2507,8 @@
                                 const result = await response.json();
                                 valueInput.value = result.name; filenameLabel.innerText = result.name;
                                 text.innerText = t("label_uploader", "Drop {0} here or click to browse",t(mediaType, mediaType));
+                                valueInput._cachedMaskCanvas = null;            // 👈 修复问题 3：重置 Mask 画板缓存
+                                valueInput._originalUnmaskedFilename = result.name; // 👈 修复问题 2：记录最原始未被打孔图片
                                 valueInput.dispatchEvent(new Event('change'));
                                 updateMediaPreview(result.name);
                             } else { text.innerText = t('label_upfailed', 'Upload failed!'); }
@@ -2398,6 +2530,16 @@
                         
                         if (mediaType === 'image') {
                             mediaElement = document.createElement('img'); mediaElement.src = fileUrl;
+                            const maskBtn = document.createElement('button');
+                            maskBtn.type = 'button';
+                            maskBtn.className = 'uploader-mask-btn';
+                            maskBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil-sparkles-icon lucide-pencil-sparkles"><path d="M10 3H8"/><path d="m15.007 5.008 3.987 3.986"/><path d="M20 15v4"/><path d="M21.174 6.813a2.82 2.82 0 0 0-3.986-3.987L3.842 16.175a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="M22 17h-4"/><path d="M4 5v4"/><path d="M6 7H2"/><path d="M9 2v2"/></svg>';
+                            maskBtn.title = t('edit_mask', 'Edit Mask');
+                            maskBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                openMaskEditor(valueInput.value, valueInput, previewBox);
+                            };
+                            previewBox.appendChild(maskBtn);
                         } else if (mediaType === 'video') {
                             mediaElement = document.createElement('video'); mediaElement.src = fileUrl; mediaElement.controls = true;
                         } else if (mediaType === 'audio') {
@@ -3295,7 +3437,387 @@
         document.getElementById('btn-stop').addEventListener('click', () => {
             fetch('/interrupt', { method: 'POST' }).catch(err => console.error("Interrupt failed:", err));
         });
+        
+        // 🖌️ ====== 遮罩编辑器 (Mask Editor) 核心引擎 ======
+        let maskState = {
+            currentValueInput: null,
+            currentPreviewBox: null,
+            currentFilename: '',
+            bgImg: null,
+            canvas: null,
+            ctx: null,
+            cursor: null,
+            isDrawing: false,
+            mode: 'draw', // 'draw' 或 'erase'
+            brushSize: 40,
+            historyStack: [], // Undo 栈
+            redoStack: [],    // Redo 栈
+            maxHistory: 20
+        };
+        
+        function initMaskModalEvents() {
+            const modal = document.getElementById('mask-modal');
+            const closeBtn = document.getElementById('mask-modal-close');
+            const cancelBtn = document.getElementById('mask-btn-cancel');
+            const saveBtn = document.getElementById('mask-btn-save');
+            const undoBtn = document.getElementById('mask-btn-undo');
+            const redoBtn = document.getElementById('mask-btn-redo');
+            const drawBtn = document.getElementById('mask-btn-draw');
+            const eraseBtn = document.getElementById('mask-btn-erase');
+            const invertBtn = document.getElementById('mask-btn-invert');
+            const clearBtn = document.getElementById('mask-btn-clear');
+            const sizeSlider = document.getElementById('mask-brush-size');
             
+            const closeModal = () => { modal.style.display = 'none'; };
+            closeBtn.onclick = closeModal;
+            cancelBtn.onclick = closeModal;
+            
+            // 模式切换
+            drawBtn.onclick = () => {
+                maskState.mode = 'draw';
+                drawBtn.classList.add('active');
+                eraseBtn.classList.remove('active');
+            };
+            eraseBtn.onclick = () => {
+                maskState.mode = 'erase';
+                eraseBtn.classList.add('active');
+                drawBtn.classList.remove('active');
+            };
+            if (invertBtn) invertBtn.onclick = invertMask;
+            // 笔刷大小
+            sizeSlider.oninput = (e) => {
+                maskState.brushSize = parseInt(e.target.value);
+                document.getElementById('mask-brush-size-val').innerText = `${maskState.brushSize}px`;
+                updateCursorSize();
+            };
+            
+            // Undo / Redo
+            undoBtn.onclick = undoMask;
+            redoBtn.onclick = redoMask;
+            
+            // 清空
+            clearBtn.onclick = () => {
+                saveMaskState();
+                maskState.ctx.clearRect(0, 0, maskState.canvas.width, maskState.canvas.height);
+            };
+            
+            // 保存应用
+            saveBtn.onclick = applyAndUploadMask;
+            
+            // 快捷键支持 (Ctrl+Z, Ctrl+Y)
+            window.addEventListener('keydown', (e) => {
+                if (modal.style.display !== 'flex') return;
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                    if (e.shiftKey) redoMask(); else undoMask();
+                } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                    redoMask();
+                }
+            });
+        }
+            
+        function updateCursorSize() {
+            if (!maskState.cursor || !maskState.bgImg) return;
+            const rect = maskState.bgImg.getBoundingClientRect();
+            if (!rect.width || rect.width === 0) return; // 👈 避免 DOM 未渲染完成时算成 0
+            const scale = rect.width / (maskState.bgImg.naturalWidth || 1);
+            const displaySize = maskState.brushSize * scale;
+            maskState.cursor.style.width = `${displaySize}px`;
+            maskState.cursor.style.height = `${displaySize}px`;
+        }
+        
+        function saveMaskState() {
+            if (!maskState.ctx) return;
+            const snapshot = maskState.ctx.getImageData(0, 0, maskState.canvas.width, maskState.canvas.height);
+            maskState.historyStack.push(snapshot);
+            if (maskState.historyStack.length > maskState.maxHistory) maskState.historyStack.shift();
+            maskState.redoStack = []; // 开启新绘制时清空 Redo
+            updateUndoRedoButtons();
+        }
+        
+        function updateUndoRedoButtons() {
+            document.getElementById('mask-btn-undo').disabled = maskState.historyStack.length === 0;
+            document.getElementById('mask-btn-redo').disabled = maskState.redoStack.length === 0;
+        }
+        
+        function undoMask() {
+            if (maskState.historyStack.length === 0) return;
+            const current = maskState.ctx.getImageData(0, 0, maskState.canvas.width, maskState.canvas.height);
+            maskState.redoStack.push(current);
+            const prev = maskState.historyStack.pop();
+            maskState.ctx.putImageData(prev, 0, 0);
+            updateUndoRedoButtons();
+        }
+        
+        function redoMask() {
+            if (maskState.redoStack.length === 0) return;
+            const current = maskState.ctx.getImageData(0, 0, maskState.canvas.width, maskState.canvas.height);
+            maskState.historyStack.push(current);
+            const next = maskState.redoStack.pop();
+            maskState.ctx.putImageData(next, 0, 0);
+            updateUndoRedoButtons();
+        }
+            
+        function invertMask() {
+            if (!maskState.ctx || !maskState.canvas) return;
+            saveMaskState();
+            
+            const nw = maskState.canvas.width;
+            const nh = maskState.canvas.height;
+            const imgData = maskState.ctx.getImageData(0, 0, nw, nh);
+            const data = imgData.data;
+            
+            for (let i = 0; i < data.length; i += 4) {
+                if (data[i + 3] > 0) {
+                    data[i] = 0; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 0;
+                } else {
+                    data[i] = 255; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 255;
+                }
+            }
+            maskState.ctx.putImageData(imgData, 0, 0);
+        }
+            
+        function openMaskEditor(filename, valueInputEl, previewBoxEl) {
+            if (!filename || filename === 'None') return;
+            maskState.currentValueInput = valueInputEl;
+            maskState.currentPreviewBox = previewBoxEl;
+            maskState.currentFilename = filename;
+            maskState.historyStack = [];
+            maskState.redoStack = [];
+            updateUndoRedoButtons();
+            
+            if (!valueInputEl._originalUnmaskedFilename) valueInputEl._originalUnmaskedFilename = filename;
+            // 👈 修复问题 2：背景永远载入原始无透孔图片
+            const displayFilename = valueInputEl._originalUnmaskedFilename; 
+            
+            const modal = document.getElementById('mask-modal');
+            const bgImg = document.getElementById('mask-bg-img');
+            const canvas = document.getElementById('mask-draw-canvas');
+            const cursor = document.getElementById('mask-brush-cursor');
+            
+            maskState.bgImg = bgImg;
+            maskState.canvas = canvas;
+            maskState.ctx = canvas.getContext('2d');
+            maskState.cursor = cursor;
+            canvas.style.opacity = '0.4';
+            
+            bgImg.onload = () => {
+                const nw = bgImg.naturalWidth;
+                const nh = bgImg.naturalHeight;
+                canvas.width = nw;
+                canvas.height = nh;
+                maskState.ctx.clearRect(0, 0, nw, nh);
+                
+                // 如果 DOM 节点上有缓存的 Mask 画布，恢复它
+                if (valueInputEl._cachedMaskCanvas) {
+                    maskState.ctx.drawImage(valueInputEl._cachedMaskCanvas, 0, 0);
+                }
+                
+                initCanvasEvents();
+                updateCursorSize();
+                modal.style.display = 'flex';
+                
+                // 同步滑块初始值 UI
+                const sizeSlider = document.getElementById('mask-brush-size');
+                if (sizeSlider) {
+                    sizeSlider.value = maskState.brushSize;
+                    document.getElementById('mask-brush-size-val').innerText = `${maskState.brushSize}px`;
+                }
+                
+                // 🌟 等待 DOM Layout 渲染完成后，精准刷新光标圈尺寸
+                requestAnimationFrame(() => {
+                    setTimeout(() => { updateCursorSize(); }, 50);
+                });
+            };
+            
+            bgImg.src = `/api/view?filename=${encodeURIComponent(displayFilename)}&type=input`;
+        }
+            
+        function initCanvasEvents() {
+            const canvas = maskState.canvas;
+            const bgImg = maskState.bgImg;
+            const cursor = maskState.cursor;
+            
+            // 存储上一次画笔的物理坐标
+            let lastX = null;
+            let lastY = null;
+                
+            const getCanvasCoords = (e) => {
+                const rect = bgImg.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY,
+                    clientX: clientX - rect.left,
+                    clientY: clientY - rect.top
+                };
+            };
+            
+            // 执行单段线段绘制/插值
+            const drawSegment = (x1, y1, x2, y2) => {
+                const ctx = maskState.ctx;
+                ctx.lineWidth = maskState.brushSize;
+                ctx.lineCap = 'round';   // 线的两端为圆头
+                ctx.lineJoin = 'round';  // 线段拐角处圆滑过渡
+                
+                if (maskState.mode === 'draw') {
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.strokeStyle = '#ff0000'; // 纯红绘制，重叠不会变深
+                    ctx.fillStyle = '#ff0000';
+                } else {
+                    ctx.globalCompositeOperation = 'destination-out'; // 橡皮擦模式
+                }
+                
+                ctx.beginPath();
+                if (x1 === x2 && y1 === y2) {
+                    // 点按一下（未发生划动）
+                    ctx.arc(x1, y1, maskState.brushSize / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // 划动过程：连接上一点与当前点，消除离散断点
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+            };
+                
+            const startDraw = (e) => {
+                e.preventDefault();
+                saveMaskState();
+                maskState.isDrawing = true;
+                const pos = getCanvasCoords(e);
+                lastX = pos.x;
+                lastY = pos.y;
+                drawSegment(pos.x, pos.y, pos.x, pos.y);
+            };
+            
+            const moveDraw = (e) => {
+                const pos = getCanvasCoords(e);
+                
+                // 更新并显示画笔圆圈 Cursor
+                updateCursorSize(); // 👈 确保尺寸是最新的
+                cursor.style.display = 'block';
+                cursor.style.left = `${pos.clientX}px`;
+                cursor.style.top = `${pos.clientY}px`;
+                
+                if (!maskState.isDrawing) return;
+                e.preventDefault();
+                
+                // 🌟 获取高频触摸点 (Coalesced Events)，处理快速划动时的丢失点
+                const coalesced = (e.getCoalescedEvents && e.getCoalescedEvents()) || [e];
+                for (const ev of coalesced) {
+                    const currentPos = getCanvasCoords(ev);
+                    drawSegment(lastX, lastY, currentPos.x, currentPos.y);
+                    lastX = currentPos.x;
+                    lastY = currentPos.y;
+                }
+            };
+                
+            const stopDraw = () => {
+                if (maskState.isDrawing) {
+                    maskState.isDrawing = false;
+                    lastX = null;
+                    lastY = null;
+                }
+            };
+            
+            canvas.onpointerdown = startDraw;
+            canvas.onpointermove = moveDraw;
+            canvas.onpointerup = stopDraw;
+            canvas.onpointerleave = () => {
+                stopDraw();
+                cursor.style.display = 'none';
+            };
+            bgImg.parentElement.onpointerenter = () => { cursor.style.display = 'block'; };
+            bgImg.parentElement.onpointerleave = () => { cursor.style.display = 'none'; };
+        }
+        
+        async function applyAndUploadMask() {
+            const saveBtn = document.getElementById('mask-btn-save');
+            saveBtn.innerText = t('label_uploading', 'Uploading...');
+            saveBtn.disabled = true;
+                
+            try {
+                const nw = maskState.bgImg.naturalWidth;
+                const nh = maskState.bgImg.naturalHeight;
+                
+                // 1. 检查如果 Mask 画板全空，直接还原为原图，无需提交 Mask
+                const maskPixelData = maskState.ctx.getImageData(0, 0, nw, nh).data;
+                let isMaskEmpty = true;
+                for (let i = 3; i < maskPixelData.length; i += 4) {
+                    if (maskPixelData[i] > 0) { isMaskEmpty = false; break; }
+                }
+                
+                const originalName = maskState.currentValueInput._originalUnmaskedFilename || maskState.currentFilename;
+                
+                if (isMaskEmpty) {
+                    maskState.currentValueInput.value = originalName;
+                    maskState.currentValueInput._cachedMaskCanvas = null;
+                    maskState.currentValueInput.dispatchEvent(new Event('change'));
+                    
+                    const img = maskState.currentPreviewBox.querySelector('img');
+                    if (img) img.src = `/api/view?filename=${encodeURIComponent(originalName)}&type=input&t=${Date.now()}`;
+                    
+                    saveBtn.innerText = t('label_save', "Save")
+                    saveBtn.disabled = false;
+                    document.getElementById('mask-modal').style.display = 'none';
+                    return;
+                }
+                
+                // 2. 缓存当前 Mask 画布供二次编辑
+                const cacheCanvas = document.createElement('canvas');
+                cacheCanvas.width = nw; cacheCanvas.height = nh;
+                cacheCanvas.getContext('2d').drawImage(maskState.canvas, 0, 0);
+                maskState.currentValueInput._cachedMaskCanvas = cacheCanvas;
+                
+                // 🌟 3. 反转 Mask Alpha 通道，适配 ComfyUI (未涂鸦=不透明255，涂鸦=透明0)
+                const invCanvas = document.createElement('canvas');
+                invCanvas.width = nw; invCanvas.height = nh;
+                const invCtx = invCanvas.getContext('2d');
+                invCtx.fillStyle = '#FFFFFF';
+                invCtx.fillRect(0, 0, nw, nh); // 填充纯白 (Alpha=255)
+                invCtx.globalCompositeOperation = 'destination-out';
+                invCtx.drawImage(maskState.canvas, 0, 0); // 扣掉涂鸦区域 (Alpha=0)
+                
+                // 4. 将反转后的正确 Alpha Mask 提交给 ComfyUI /upload/mask 接口
+                invCanvas.toBlob(async (maskBlob) => {
+                    const formData = new FormData();
+                    formData.append('image', maskBlob, 'mask.png');
+                    formData.append('original_ref', JSON.stringify({
+                        filename: originalName,
+                        subfolder: '',
+                        type: 'input'
+                    }));
+                    
+                    const res = await fetch('/upload/mask', { method: 'POST', body: formData });
+                    if (res.ok) {
+                        const result = await res.json();
+                        maskState.currentValueInput.value = result.name;
+                        maskState.currentValueInput.dispatchEvent(new Event('change'));
+                        
+                        // 刷新前端预览图
+                        const img = maskState.currentPreviewBox.querySelector('img');
+                        if (img) img.src = `/api/view?filename=${encodeURIComponent(result.name)}&type=input&t=${Date.now()}`;
+                    } else {
+                        alert("Failed to save mask via /upload/mask");
+                    }
+                    
+                    saveBtn.innerText = t('label_save', "Save");
+                    saveBtn.disabled = false;
+                    document.getElementById('mask-modal').style.display = 'none';
+                }, 'image/png');
+            } catch (err) {
+                console.error("Failed to apply mask:", err);
+                saveBtn.innerText = t('label_save', "Save")
+                saveBtn.disabled = false;
+            }
+        }
+        
+        // 初始化 Mask Modal 事件
+        initMaskModalEvents();
+        
         // 📊 ====== 监控面板数据与交互逻辑 ======
         let systemMonitorTimer = null;
         

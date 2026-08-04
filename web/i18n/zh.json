@@ -137,5 +137,9 @@
   "queue_error": "⚠️ 请求失败\n\n{0}",
   "saving": "正在保存...",
   "refreshing": "正在加载节点和模型列表",
-  "no_subgraph_alert": "⚠️ 兼容性警告\n\n独立模式不支持子图或旁路器, 请在画布模式中打开此工作流."
+  "no_subgraph_alert": "⚠️ 兼容性警告\n\n独立模式不支持子图或旁路器, 请在画布模式中打开此工作流.",
+  "still-loading": "(服务端启动后的首次访问可能耗时较长)",
+  "pen-size": "画笔\n尺寸",
+  "mask_editor": "🖌️ 遮罩编辑器",
+  "edit_mask": "编辑遮罩"
 }
