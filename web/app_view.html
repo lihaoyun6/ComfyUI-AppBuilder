@@ -1890,7 +1890,8 @@
                 e.stopPropagation();
                 const confirmText = t("confirm_clear_gallery", "Clear generation history?");
                 if (confirm(confirmText)) {
-                    document.querySelectorAll('.gallery-item, .gallery-item-placeholder').forEach(el => el.remove());
+                    const galleryScroll = document.getElementById('gallery-scroll');
+                    if (galleryScroll) galleryScroll.innerHTML = ''; // 👈 一键彻底清空图片、视频及 ▶ 播放按钮
                     galleryData = []; localStorage.removeItem('appview_gallery_history');
                 }
             };
@@ -1905,6 +1906,12 @@
                     if (res.ok) {
                         standaloneWorkflowData = await res.json();
                         standaloneBuilderNode = standaloneWorkflowData.nodes.find(n => n.type === "AppBuilderAdv" || n.type === "AppBuilder");
+                        
+                        if (!standaloneBuilderNode) {
+                            alert(t("not_app", "⚠️ Invalid App Workflow\n\nThis is not an App workflow!\nPlease configure it using AppBuilder first."));
+                            window.location.href = `apps?mode=standalone`;
+                            return;
+                        }
                         
                         let hasSubgraph = false;
                         let hasBypasser = false;

@@ -637,6 +637,38 @@ app.registerExtension({
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
+                
+                const existingBuilders = [
+                    ...(app.graph.findNodesByType("AppBuilder") || []),
+                    ...(app.graph.findNodesByType("AppBuilderAdv") || [])
+                ].filter(n => n.id !== this.id);
+                
+                if (existingBuilders.length > 0) {
+                    app.extensionManager.toast.add({
+                        severity: "warn",
+                        summary: "Warning",
+                        detail: "Only ONE AppBuilder node is allowed per workflow!",
+                        life: 5000
+                    });
+                    setTimeout(() => {
+                        const canvas = app.canvas;
+                        app.graph.remove(this);
+                        if (canvas.state) {
+                            canvas.state.draggingItems = false;
+                            canvas.state.draggingCanvas = false;
+                        }
+                        canvas.current_node = null;
+                        if (canvas.pointer) {
+                            canvas.pointer.dragStarted = false;
+                            canvas.pointer.pointerId = undefined;
+                            canvas.pointer.eLastDown = undefined;
+                        }
+                        canvas.last_mouse_dragging = false;
+                        canvas.setDirty(true, true);
+                    }, 10);
+                    return r;
+                }
+                
                 this.size = [300, 120];
                 setupAppWindowBridge(this, api);
 
@@ -1082,7 +1114,40 @@ app.registerExtension({
             const onNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
-                this.size = [300, 100]; this.addInput("bypasser_1", "BYPASSER", { shape: 7 });
+                
+                const existingBuilders = [
+                    ...(app.graph.findNodesByType("AppBuilder") || []),
+                    ...(app.graph.findNodesByType("AppBuilderAdv") || [])
+                ].filter(n => n.id !== this.id);
+                
+                if (existingBuilders.length > 0) {
+                    app.extensionManager.toast.add({
+                        severity: "warn",
+                        summary: "Warning",
+                        detail: "Only ONE AppBuilder node is allowed per workflow!",
+                        life: 5000
+                    });
+                    setTimeout(() => {
+                        const canvas = app.canvas;
+                        app.graph.remove(this);
+                        if (canvas.state) {
+                            canvas.state.draggingItems = false;
+                            canvas.state.draggingCanvas = false;
+                        }
+                        canvas.current_node = null;
+                        if (canvas.pointer) {
+                            canvas.pointer.dragStarted = false;
+                            canvas.pointer.pointerId = undefined;
+                            canvas.pointer.eLastDown = undefined;
+                        }
+                        canvas.last_mouse_dragging = false;
+                        canvas.setDirty(true, true);
+                    }, 10);
+                    return r;
+                }
+                
+                this.size = [300, 100];
+                this.addInput("bypasser_1", "BYPASSER", { shape: 7 });
                 setupAppWindowBridge(this, api);
                 
                 setTimeout(() => {
@@ -1307,7 +1372,12 @@ app.registerExtension({
                     // ❌ 只有在四层判定全不通过时，才判定为不支持（比如真正的 MODEL / LATENT 物理模型槽位）
                     if (!isSupported) {
                         const illegalType = targetSlot.type || "Unknown";
-                        alert(`⚠️ Connection Rejected\n\nUnsupported connection type "${illegalType}"`);
+                        app.extensionManager.toast.add({
+                            severity: "warn",
+                            summary: "Connection Rejected",
+                            detail: `Unsupported type "${illegalType}"`,
+                            life: 5000
+                        });
                         app.graph.removeLink(link.id); this.setDirtyCanvas(true, true); return; 
                     }
                     
