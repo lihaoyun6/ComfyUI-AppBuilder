@@ -77,6 +77,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         
         html, body {
+            background-color: var(--bg);
             overscroll-behavior-y: none; 
             overscroll-behavior: none;
             touch-action: manipulation !important;
@@ -155,6 +156,17 @@
         .gallery-item {
             height: 60px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
             border: 2px solid var(--border); cursor: pointer; user-select: none; -webkit-user-drag: none;
+        }
+        /* 🎬 画廊视频封面包裹器与假播放按钮 */
+        .gallery-item-wrap {
+            position: relative; display: inline-block; height: 60px; flex-shrink: 0; cursor: pointer;
+        }
+        .gallery-play-badge {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 26px; height: 26px; background: rgba(0, 0, 0, 0.65);
+            border: 1.5px solid #ffffff; border-radius: 50%; color: #ffffff; font-size: 11px;
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none; padding-left: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.5);
         }
         
         .gallery-clear-btn {
@@ -518,8 +530,8 @@
             backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
         }
         .lightbox-content { 
-            max-width: 95dvw; 
-            max-height: 90dvh; 
+            max-width: calc(100dvw - 12px) !important;
+            max-height: calc(100dvh - 120px) !important;
             object-fit: contain; 
             user-select: none;
             -webkit-user-drag: auto !important; /* 👈 改为 auto，允许电脑端把图片拖出浏览器 */
@@ -541,14 +553,13 @@
         }
         .lightbox-arrow:hover { background: var(--primary); }
         .lightbox-arrow:active { transform: translateY(-50%) scale(0.9); }
-        .lightbox-arrow-left { left: 20px; padding-right: 3px; }
-        .lightbox-arrow-right { right: 20px; padding-left: 3px; }
+        .lightbox-arrow-left { left: 10px; padding-right: 2px; }
+        .lightbox-arrow-right { right: 10px; padding-left: 2px; }
         
-        .lightbox-close {
-            top: 40px; right: 20px; font-size: 35px; font-weight: bold; padding-bottom: 6px;
-            user-select: none; z-index: 11300 !important;
-        }
-        .lightbox-close:hover { background: #d13d22 !important; }
+        .lightbox-close { top: 30px; right: 10px; user-select: none; z-index: 11300 !important; }
+        .lightbox-close:hover { background: var(--red) !important; }
+        .lightbox-download { top: calc(100% - 30px); right: 10px; user-select: none; z-index: 11300 !important; padding-bottom: 2px; }
+        .lightbox-download:hover { background: var(--primary) !important; }
         
         .number-input::-webkit-outer-spin-button, .number-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .number-input[type=number] { -moz-appearance: textfield; }
@@ -743,6 +754,8 @@
             .gallery-item { height: 80px !important; }
             .gallery-clear-btn { height: 40px !important; }
             .gallery-item-placeholder { width: 80px !important; height: 80px !important; }
+            .gallery-item-wrap { height: 80px; }
+            .gallery-play-badge { width: 32px; height: 32px; font-size: 13px; }
             .resizer {
                 position: absolute; left: 0; top: 0; 
                 width: 14px; height: 100%; cursor: col-resize; flex-shrink: 0; border-top: none;
@@ -967,10 +980,19 @@
     </div>
 
     <div id="lightbox-modal" class="lightbox-modal">
-        <span class="lightbox-arrow lightbox-close" id="lightbox-close">&times;</span>
-        <button class="lightbox-arrow lightbox-arrow-left" id="lightbox-prev">&#10094;</button>
+        <span class="lightbox-arrow lightbox-close" id="lightbox-close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </span>
+        <a class="lightbox-arrow lightbox-download" id="lightbox-download" title="Download" target="_blank" download>
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
+        </a>
+        <button class="lightbox-arrow lightbox-arrow-left" id="lightbox-prev">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-left-icon lucide-chevron-left"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
         <img class="lightbox-content" id="lightbox-img">
-        <button class="lightbox-arrow lightbox-arrow-right" id="lightbox-next">&#10095;</button>
+        <button class="lightbox-arrow lightbox-arrow-right" id="lightbox-next">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right-icon lucide-chevron-right"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
     </div>
     
     <!-- 🖌️ 遮罩编辑器模态框 (Mask Editor Modal) -->
@@ -1040,10 +1062,10 @@
             setTimeout(() => {
                 titleEl.innerText = "Still Loading...";
                 subtitleEl.style.display = "block";
-            }, 5000);
+            }, 6000);
             setTimeout(() => {
                 titleEl.innerText = "Loading Nodes & Models";
-            },10000);
+            },15000);
         }
     </script>
     <script type="text/javascript" src="./i18n/i18n.js"></script>
@@ -1139,24 +1161,23 @@
             // 2. 遍历真实节点，把 UI 参数直接注入到 downstream 槽位中
             workflowData.nodes.forEach(node => {
                 const classType = node.type;
-                if (!objectInfo[node.type]||uiNodeTypes.includes(classType)) return; // 过滤 UI 节点
-
+                if (!objectInfo[node.type] || uiNodeTypes.includes(classType)) return; // 过滤 UI 节点
+                
                 const nodePrompt = { 
                     class_type: classType, 
                     inputs: {},
                     _meta: { title: node.title || classType }
                 };
                 const nodeDef = objectInfo ? objectInfo[classType] : null;
-
+                    
                 // A. 先用节点的默认 Widget 控件值填充
                 if (nodeDef && nodeDef.input) {
                     const reqInputs = nodeDef.input.required || {};
                     const optInputs = nodeDef.input.optional || {};
                     const allInputDefs = { ...reqInputs, ...optInputs };
-
+                    
                     let widgetIdx = 0;
-                    const widgetValues = node.widgets_values || [];
-
+                    
                     const isWidgetSpec = (spec) => {
                         if (!spec || !Array.isArray(spec)) return false;
                         if (Array.isArray(spec[0])) return true;
@@ -1167,23 +1188,45 @@
                         || t.includes("COMBO") 
                         || t.startsWith("COMFY_");
                     };
-
-                    // 🌟 修复后（支持 DynamicCombo 嵌套子参数展开为 dot-notation）：
+                        
+                    const rawWidgetsValues = node.widgets_values;
+                    const widgetValuesArray = Array.isArray(rawWidgetsValues) ? rawWidgetsValues : [];
+                    const widgetValuesObj = (typeof rawWidgetsValues === "object" && !Array.isArray(rawWidgetsValues) && rawWidgetsValues !== null) ? rawWidgetsValues : {};
+                    
                     for (const [inputName, inputSpec] of Object.entries(allInputDefs)) {
-                        if (isWidgetSpec(inputSpec) && widgetIdx < widgetValues.length) {
-                            let val = widgetValues[widgetIdx++];
-                            if (typeof val === "string" && ["fixed", "increment", "decrement", "randomize"].includes(val)) {
-                                if (widgetIdx < widgetValues.length) val = widgetValues[widgetIdx++];
+                        if (isWidgetSpec(inputSpec)) {
+                            // 1. 提取预设默认值 (Default Value)
+                            let defaultValue = undefined;
+                            if (Array.isArray(inputSpec) && inputSpec[1] && typeof inputSpec[1] === "object") {
+                                defaultValue = inputSpec[1].default;
+                            } else if (Array.isArray(inputSpec[0])) {
+                                defaultValue = inputSpec[0][0];
                             }
-                            nodePrompt.inputs[inputName] = val;
                             
-                            // 🌟 处理 DynamicCombo 复合控件的点号子参数展开 (例如 format.bit_depth / format.input_color_space)
+                            // 2. 优先级：对象显式键值 -> 数组按序提取 -> object_info 默认值兜底
+                            let val = undefined;
+                            if (widgetValuesObj[inputName] !== undefined) {
+                                val = widgetValuesObj[inputName];
+                            } else if (widgetIdx < widgetValuesArray.length) {
+                                val = widgetValuesArray[widgetIdx++];
+                                if (typeof val === "string" && ["fixed", "increment", "decrement", "randomize"].includes(val)) {
+                                    if (widgetIdx < widgetValuesArray.length) val = widgetValuesArray[widgetIdx++];
+                                }
+                            } else {
+                                val = defaultValue; // 🌟 兜底保障：无论如何填入默认值！
+                            }
+                            
+                            if (val !== undefined && val !== null) {
+                                nodePrompt.inputs[inputName] = val;
+                            }
+                                
+                            // 3. 处理 DynamicCombo 复合控件 (如 SaveImageAdvanced)
                             const typeStr = String(inputSpec[0]).toUpperCase();
                             if (typeStr.includes("DYNAMICCOMBO") || typeStr.includes("DYNAMIC_COMBO")) {
                                 const comboOpts = inputSpec[1]?.options;
                                 if (Array.isArray(comboOpts)) {
-                                    const selectedKey = (typeof val === "object" && val !== null) ? (val.key || val.name || val.value) : val;
-                                    const selectedOpt = comboOpts.find(o => o.key === selectedKey || o.name === selectedKey);
+                                    const selKey = (typeof val === "object" && val !== null) ? (val.key || val.name || val.value) : val;
+                                    const selectedOpt = comboOpts.find(o => o.key === selKey || o.name === selKey);
                                     
                                     if (selectedOpt && selectedOpt.inputs) {
                                         const subReq = selectedOpt.inputs.required || {};
@@ -1191,20 +1234,58 @@
                                         const allSubDefs = { ...subReq, ...subOpt };
                                         
                                         for (const [subName, subSpec] of Object.entries(allSubDefs)) {
-                                            if (widgetIdx < widgetValues.length) {
-                                                let subVal = widgetValues[widgetIdx++];
-                                                // 生成 ComfyUI 要求的 "format.bit_depth" 格式
-                                                nodePrompt.inputs[`${inputName}.${subName}`] = subVal;
+                                            let subDefault = subSpec[1]?.default ?? (Array.isArray(subSpec[0]) ? subSpec[0][0] : undefined);
+                                                let subVal = undefined;
+                                                if (widgetValuesObj[`${inputName}.${subName}`] !== undefined) {
+                                                    subVal = widgetValuesObj[`${inputName}.${subName}`];
+                                                } else if (widgetIdx < widgetValuesArray.length) {
+                                                    subVal = widgetValuesArray[widgetIdx++];
+                                                } else {
+                                                    subVal = subDefault;
+                                                }
+                                                if (subVal !== undefined && subVal !== null) {
+                                                    nodePrompt.inputs[`${inputName}.${subName}`] = subVal;
+                                                }
+                                        }
+                                    }
+                                }
+                            }
+                                
+                            // 4. 处理 VHS_VideoCombine 专属动态格式参数
+                            if (inputSpec[1] && inputSpec[1].formats) {
+                                const formatsObj = inputSpec[1].formats;
+                                const formatKey = (typeof val === "object" && val !== null) ? (val.key || val.name || val.value) : val;
+                                
+                                if (formatKey && formatsObj[formatKey]) {
+                                    const subWidgetDefs = formatsObj[formatKey];
+                                    if (Array.isArray(subWidgetDefs)) {
+                                        for (const subItem of subWidgetDefs) {
+                                            if (Array.isArray(subItem) && subItem.length > 0) {
+                                                const subName = subItem[0];
+                                                let subDefault = subItem[2]?.default ?? (Array.isArray(subItem[1]) ? subItem[1][0] : undefined);
+                                                    let subVal = undefined;
+                                                    
+                                                    if (widgetValuesObj[subName] !== undefined) {
+                                                        subVal = widgetValuesObj[subName];
+                                                    } else if (widgetIdx < widgetValuesArray.length) {
+                                                        subVal = widgetValuesArray[widgetIdx++];
+                                                    } else {
+                                                        subVal = subDefault;
+                                                    }
+                                                    
+                                                    if (subVal !== undefined && subVal !== null) {
+                                                        nodePrompt.inputs[subName] = subVal;
+                                                    }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                }
-
-                // B. 处理槽位连线：如果是 UI 节点的线，直接用 slotValuesMap 注入！如果是普通节点，保持 ["4", 0]
+                    } // 闭合 for (inputName)
+                } // 🌟 补上了这里缺失的右大括号，闭合 if (nodeDef && nodeDef.input) !
+                    
+                    // B. 处理槽位连线：如果是 UI 节点的线，直接用 slotValuesMap 注入！如果是普通节点，保持 ["4", 0]
                 if (node.inputs) {
                     node.inputs.forEach(input => {
                         if (input.link) {
@@ -1213,7 +1294,7 @@
                                 const originNodeId = originInfo[0];
                                 const originSlot = originInfo[1];
                                 const originNode = nodesMap[originNodeId];
-
+                                
                                 if (originNode && uiNodeTypes.includes(originNode.type)) {
                                     // 🎯 来自 UI 节点的线：直接替换注入表单值！
                                     const injectedVal = slotValuesMap[originSlot];
@@ -1228,9 +1309,9 @@
                         }
                     });
                 }
-
+                
                 prompt[String(node.id)] = nodePrompt;
-            });
+            }); // 闭合 workflowData.nodes.forEach
 
             // C. 兜底处理直连型 AppBuilder (如果有)
             Object.entries(config).forEach(([key, param]) => {
@@ -1302,6 +1383,20 @@
             const historyStr = localStorage.getItem('appview_gallery_history');
             if (historyStr) { galleryData = JSON.parse(historyStr); if (!Array.isArray(galleryData)) galleryData = []; }
         } catch(e) { galleryData = []; }
+    
+        // 🔍 精准检测 URL 是否为视频文件
+        function isVideoUrl(urlStr) {
+            if (!urlStr) return false;
+            try {
+                const urlObj = new URL(urlStr, window.location.href);
+                const fn = urlObj.searchParams.get('filename') || urlObj.pathname;
+                const ext = fn.split('?')[0].split('.').pop().toLowerCase();
+                return ['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(ext);
+            } catch(e) {
+                const lower = urlStr.toLowerCase();
+                return lower.includes('.mp4') || lower.includes('.webm') || lower.includes('.mov');
+            }
+        }
         
         function renderGalleryItem(src, isPrepend) {
             const galleryScroll = document.getElementById('gallery-scroll');
@@ -1311,19 +1406,53 @@
             if (isPrepend) { galleryScroll.insertBefore(placeholder, galleryScroll.firstChild); } 
             else { galleryScroll.appendChild(placeholder); }
             
-            const testImg = new Image();
-            testImg.onload = () => {
-                const imgEl = document.createElement('img');
-                imgEl.src = src; imgEl.className = 'gallery-item';
-                imgEl.onclick = function() { openLightbox(this.src); };
-                placeholder.replaceWith(imgEl);
-            };
-            testImg.onerror = () => {
-                placeholder.remove();
-                galleryData = galleryData.filter(url => url !== src);
-                localStorage.setItem('appview_gallery_history', JSON.stringify(galleryData));
-            };
-            testImg.src = src;
+            const isVideo = isVideoUrl(src);
+            
+            let itemEl;
+            if (isVideo) {
+                const wrap = document.createElement('div');
+                wrap.className = 'gallery-item-wrap';
+                
+                const vid = document.createElement('video');
+                
+                // 🌟 Safari 兼容关键 1: 加上 #t=0.001 强制 Safari 解码第 0.001 秒作为静态封面！
+                const safariVideoSrc = src.includes('#') ? src : `${src}#t=0.001`;
+                vid.src = safariVideoSrc;
+                vid.preload = 'metadata'; 
+                vid.className = 'gallery-item';
+                
+                // 🌟 Safari 兼容关键 2: iOS Safari 必须带有 muted 和 playsinline，否则会黑屏
+                vid.muted = true;
+                vid.defaultMuted = true;
+                vid.playsInline = true;
+                vid.setAttribute('playsinline', '');
+                vid.setAttribute('webkit-playsinline', '');
+                
+                // 假播放按钮 ▶
+                const badge = document.createElement('div');
+                badge.className = 'gallery-play-badge';
+                badge.innerText = '▶';
+                
+                wrap.appendChild(vid);
+                wrap.appendChild(badge);
+                
+                wrap.onclick = function() { openLightbox(src); };
+                placeholder.replaceWith(wrap);
+            } else {
+                const testImg = new Image();
+                testImg.onload = () => {
+                    itemEl = document.createElement('img');
+                    itemEl.src = src; itemEl.className = 'gallery-item';
+                    itemEl.onclick = function() { openLightbox(this.src); };
+                    placeholder.replaceWith(itemEl);
+                };
+                testImg.onerror = () => {
+                    placeholder.remove();
+                    galleryData = galleryData.filter(url => url !== src);
+                    localStorage.setItem('appview_gallery_history', JSON.stringify(galleryData));
+                };
+                testImg.src = src;
+            }
         }
         
         function updateQueueBadge(count) {
@@ -1460,19 +1589,29 @@
             }
             else if (msg.type === 'executed') {
                 const data = msg.detail;
-                if (data && data.output && data.output.images) {
-                    data.output.images.forEach(img => {
-                        const imgUrl = `/api/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder)}&type=${encodeURIComponent(img.type)}`;
-                        document.getElementById('main-preview').src = imgUrl;
-                        galleryData.unshift(imgUrl);
+                if (data && data.output) {
+                    const mediaItems = [];
+                    // 递归提取 data.output 下所有的文件项（兼容视频/图片/动画节点）
+                    Object.values(data.output).forEach(val => {
+                        if (Array.isArray(val)) {
+                            val.forEach(item => { if (item && item.filename) mediaItems.push(item); });
+                        }
+                    });
+                    
+                    mediaItems.forEach(item => {
+                        const mediaUrl = `/api/view?filename=${encodeURIComponent(item.filename)}&subfolder=${encodeURIComponent(item.subfolder || '')}&type=${encodeURIComponent(item.type || 'output')}`;
+                        
+                        // 加入历史记录与画廊
+                        galleryData.unshift(mediaUrl);
                         if (galleryData.length > 1000) galleryData = galleryData.slice(0, 1000);
                         localStorage.setItem('appview_gallery_history', JSON.stringify(galleryData));
-                        renderGalleryItem(imgUrl, true);
+                        renderGalleryItem(mediaUrl, true);
+                        
                         const lightboxModal = document.getElementById('lightbox-modal');
                         if (lightboxModal && lightboxModal.style.display === 'flex') {
                             const currentViewedUrl = currentImagesList[currentLightboxIndex]; 
                             const items = Array.from(document.querySelectorAll('.gallery-item'));
-                            currentImagesList = items.map(i => i.src);
+                            currentImagesList = items.map(i => i.src || i.currentSrc);
                             currentLightboxIndex = currentImagesList.indexOf(currentViewedUrl);
                             if (currentLightboxIndex === -1) currentLightboxIndex = 0;
                         }
@@ -2701,11 +2840,21 @@
             document.getElementById('multiline-modal').style.display = 'none';
             activeInputEl = null;
         }
+                        
+        // 🔍 规范化 URL (剥离 #t=0.001 等哈希标记用于匹配)
+        const normalizeLightboxUrl = (u) => {
+            if (!u) return '';
+            try {
+                return new URL(u, window.location.href).href.split('#')[0];
+            } catch(e) {
+                return u.split('#')[0];
+            }
+        };
         
         function openLightbox(src) {
             if (src && !src.startsWith('data:image/svg+xml')) {
                 const items = Array.from(document.querySelectorAll('.gallery-item'));
-                currentImagesList = items.map(img => img.src);
+                currentImagesList = items.map(el => normalizeLightboxUrl(el.src || el.currentSrc)).filter(Boolean);
                 const absoluteSrc = new URL(src, window.location.href).href;
                 currentLightboxIndex = currentImagesList.indexOf(absoluteSrc);
                 if (currentLightboxIndex === -1) { currentImagesList = [absoluteSrc]; currentLightboxIndex = 0; }
@@ -2808,19 +2957,68 @@
         function closeLightbox() {
             const lightboxModal = document.getElementById('lightbox-modal');
             if (lightboxModal) lightboxModal.style.display = 'none';
+            // 🎬 关闭灯箱时停止视频播放
+            const lbVid = document.getElementById('lightbox-video');
+            if (lbVid) {
+                lbVid.pause();
+                lbVid.src = '';
+            }
             resetLightboxZoom(false);
         }
                     
         function updateLightboxUI() {
             const imgUrl = currentImagesList[currentLightboxIndex];
-            resetLightboxZoom(false); // 切换图片时自动复原缩放
-            document.getElementById('lightbox-img').src = imgUrl;
+            resetLightboxZoom(false); // 切换时自动复原缩放
+            
+            const lbImg = document.getElementById('lightbox-img');
+            let lbVid = document.getElementById('lightbox-video');
+            
+            // 如果灯箱里还没有 <video> 标签，动态创建一个带控制条的播放器
+            if (!lbVid) {
+                lbVid = document.createElement('video');
+                lbVid.id = 'lightbox-video';
+                lbVid.className = 'lightbox-content';
+                lbVid.autoplay = true;
+                lbVid.loop = true;
+                lbVid.controls = true; // 👈 灯箱大图提供播放/暂停/进度条/音量控制
+                lbVid.playsInline = true;
+                lbVid.style.cssText = 'max-width: 95dvw; max-height: 90dvh; object-fit: contain; display: none; z-index: 11100;';
+                const modal = document.getElementById('lightbox-modal');
+                const nextBtn = document.getElementById('lightbox-next');
+                modal.insertBefore(lbVid, nextBtn);
+            }
+            
+            const isVideo = isVideoUrl(imgUrl);
+            
+            if (isVideo) {
+                if (lbImg) lbImg.style.display = 'none';
+                lbVid.src = imgUrl;
+                lbVid.muted = true;         // 👈 默认静音
+                lbVid.defaultMuted = true;
+                lbVid.style.display = 'block';
+                lbVid.play().catch(()=>{});
+            } else {
+                if (lbVid) {
+                    lbVid.style.display = 'none';
+                    lbVid.pause();
+                }
+                if (lbImg) {
+                    lbImg.src = imgUrl;
+                    lbImg.style.display = 'block';
+                }
+            }
             
             const prevBtn = document.getElementById('lightbox-prev');
             const nextBtn = document.getElementById('lightbox-next');
             if (prevBtn && nextBtn) {
                 prevBtn.style.display = (currentLightboxIndex === 0) ? 'none' : 'flex';
                 nextBtn.style.display = (currentLightboxIndex === currentImagesList.length - 1) ? 'none' : 'flex';
+            }
+            const lbDl = document.getElementById('lightbox-download');
+            if (lbDl) {
+                lbDl.href = imgUrl;
+                const fn = new URL(imgUrl, window.location.href).searchParams.get('filename') || 'media';
+                lbDl.download = fn;
             }
         }
         
