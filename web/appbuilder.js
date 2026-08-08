@@ -276,7 +276,14 @@ const saveWidgetValueToConfig = (node, key, val) => {
     if (jsonW && jsonW.value) {
         try {
             const config = JSON.parse(jsonW.value);
-            if (config[key]) { config[key].value = val; jsonW.value = JSON.stringify(config); }
+            if (config[key]) {
+                config[key].value = val;
+                jsonW.value = JSON.stringify(config);
+                if (node.widgets_values && Array.isArray(node.widgets_values)) {
+                    const idx = node.widgets.indexOf(jsonW);
+                    if (idx !== -1) node.widgets_values[idx] = jsonW.value;
+                }
+            }
         } catch(e) {}
     }
 };
@@ -297,8 +304,11 @@ const notifyConnectedAppBuilder = (bypasserNode) => {
 
 const setupUploaderWidget = (node, key, param, defaultVal, validKeys) => {
     let inputFiles = ["None"];
-    if (app.node_defs && app.node_defs["LoadImage"]) { inputFiles = app.node_defs["LoadImage"].input.required.image[0]; } 
-    else if (defaultVal) { inputFiles = [defaultVal]; }
+    if (app.node_defs && app.node_defs["LoadImage"]) { 
+        inputFiles = app.node_defs["LoadImage"].input.required.image[0]; 
+    } else if (defaultVal) { 
+        inputFiles = [defaultVal]; 
+    }
     
     let comboWidget = node.widgets?.find(w => w.name === key);
     if (!comboWidget) {
@@ -311,9 +321,13 @@ const setupUploaderWidget = (node, key, param, defaultVal, validKeys) => {
     }
     comboWidget.label = param.name || key;
     
-    let uploadBtn = node.widgets?.find(w => w.value === "Upload" && w.associatedKey === key);
+    // 🌟 核心修复 1：按 associatedKey 精准匹配属于本 Uploader 的专属按钮，绝不与其他 Uploader 共享按钮！
+    let uploadBtn = node.widgets?.find(w => w.associatedKey === key);
+    const btnDefaultLabel = `Choose ${param.name || key}`;
+    
     if (!uploadBtn) {
-        uploadBtn = node.addWidget("button", "Choose File", "Upload", () => {
+        uploadBtn = node.addWidget("button", btnDefaultLabel, "Upload", function() {
+            const selfBtn = this; // 🌟 核心修复 2：锁定当前按钮的专属引用
             const fileInput = document.createElement("input");
             fileInput.type = "file";
             const mediaType = param.media || 'image';
@@ -325,28 +339,42 @@ const setupUploaderWidget = (node, key, param, defaultVal, validKeys) => {
             fileInput.onchange = async () => {
                 if (fileInput.files.length > 0) {
                     const file = fileInput.files[0];
-                    uploadBtn.label = "Uploading...";
+                    selfBtn.label = "Uploading...";
                     node.setDirtyCanvas(true, true);
-                    const formData = new FormData(); formData.append("image", file);
+                    const formData = new FormData(); 
+                    formData.append("image", file);
                     try {
                         const response = await fetch("/upload/image", { method: "POST", body: formData });
                         if (response.ok) {
                             const result = await response.json();
                             if (comboWidget.options && comboWidget.options.values) {
-                                if (!comboWidget.options.values.includes(result.name)) { comboWidget.options.values.push(result.name); }
+                                if (!comboWidget.options.values.includes(result.name)) { 
+                                    comboWidget.options.values.push(result.name); 
+                                }
                             }
-                            comboWidget.value = result.name; uploadBtn.label = "Success ✅";
+                            comboWidget.value = result.name; 
+                            selfBtn.label = "Success ✅";
                             if (comboWidget.callback) comboWidget.callback(result.name);
                             if (typeof node.notifyUnpackers === "function") node.notifyUnpackers();
-                        } else { uploadBtn.label = "Failed ❌"; }
-                    } catch (e) { uploadBtn.label = "Error ❌"; }
+                        } else { 
+                            selfBtn.label = "Failed ❌"; 
+                        }
+                    } catch (e) { 
+                        selfBtn.label = "Error ❌"; 
+                    }
                     node.setDirtyCanvas(true, true);
-                    setTimeout(() => { uploadBtn.label = "Choose File"; node.setDirtyCanvas(true, true); }, 1000);
+                    setTimeout(() => { 
+                        selfBtn.label = btnDefaultLabel; 
+                        node.setDirtyCanvas(true, true); 
+                    }, 1200);
                 }
             };
             fileInput.click();
         });
-        uploadBtn.associatedKey = key; uploadBtn.serialize = false;
+        uploadBtn.associatedKey = key; 
+        uploadBtn.serialize = false;
+    } else {
+        uploadBtn.label = btnDefaultLabel;
     }
     return comboWidget;
 };
@@ -770,6 +798,21 @@ app.registerExtension({
                             ComfyWidgets.INT(this, key, ["INT", { default: initVal, min: minVal, max: maxVal, control_after_generate: true }], app);
                             widget = this.widgets.find(w => w.name === key);
                             if (widget) widget.value = initVal;
+                            const companionW = this.widgets.find(w => w.name === "control_after_generate");
+                            if (companionW) {
+                                if (params.seed_mode) companionW.value = params.seed_mode;
+                                companionW.callback = (v) => {
+                                    saveWidgetValueToConfig(this, key, widget.value);
+                                    // 保存 seed_mode 到 config_json
+                                    const jsonW = this.widgets?.find(w => w.name === "config_json");
+                                    if (jsonW && jsonW.value) {
+                                        try {
+                                            const cfg = JSON.parse(jsonW.value);
+                                            if (cfg[key]) { cfg[key].seed_mode = v; jsonW.value = JSON.stringify(cfg); }
+                                        } catch(e) {}
+                                    }
+                                };
+                            }
                         } else if (type === "STRING") {
                             if (params.multiline || params.placeholder) {
                                 ComfyWidgets.STRING(this, key, ["STRING", { multiline: !!params.multiline, default: val || "" }], app);
@@ -1426,6 +1469,7 @@ app.registerExtension({
                         _node_id: targetNode.id,
                         folder: pOpts.folder 
                     };
+                    if (pType === "SEED" && oldItem && oldItem.seed_mode) config[key].seed_mode = oldItem.seed_mode;
                     validKeys.push(key);
                 });
 
@@ -1454,7 +1498,14 @@ app.registerExtension({
                     validKeys.push(key);
                 });
 
-                if (jsonW) jsonW.value = JSON.stringify(config);
+                if (jsonW) {
+                    jsonW.value = JSON.stringify(config);
+                    // 🌟 核心修复：同步更新 widgets_values 数组，确保存盘/序列化时写进磁盘 JSON 文件！
+                    if (this.widgets_values && Array.isArray(this.widgets_values)) {
+                        const idx = this.widgets.indexOf(jsonW);
+                        if (idx !== -1) this.widgets_values[idx] = jsonW.value;
+                    }
+                }
 
                 const hasActiveSeed = Object.values(config).some(p => p.type === "SEED");
                 const hasActiveUploader = Object.values(config).some(p => p.type === "UPLOADER");
@@ -1536,6 +1587,24 @@ app.registerExtension({
                                 default: defaultVal, min: param.min ?? 0, max: param.max ?? 0xffffffffffffffff, control_after_generate: true 
                             }], app).widget;
                             if (existingW) existingW.callback = (v) => saveWidgetValueToConfig(this, key, v);
+                            const companionW = this.widgets.find(w => w.name === "control_after_generate");
+                            if (companionW) {
+                                if (param.seed_mode) companionW.value = param.seed_mode;
+                                companionW.callback = (v) => {
+                                    saveWidgetValueToConfig(this, key, existingW ? existingW.value : defaultVal);
+                                    // 实时将 seed_mode 保存到 config_json
+                                    const currentJsonW = this.widgets?.find(w => w.name === "config_json");
+                                    if (currentJsonW && currentJsonW.value) {
+                                        try {
+                                            const currentCfg = JSON.parse(currentJsonW.value);
+                                            if (currentCfg[key]) { 
+                                                currentCfg[key].seed_mode = v; 
+                                                currentJsonW.value = JSON.stringify(currentCfg); 
+                                            }
+                                        } catch(e) {}
+                                    }
+                                };
+                            }
                         } else if (param.type === "COMBO") {
                             existingW = this.addWidget("combo", key, defaultVal, ()=>{}, {values: param.values});
                         } else if (param.type === "INT" || param.type === "FLOAT") {
@@ -1602,6 +1671,13 @@ app.registerExtension({
                 });
                 const remainingWidgets = this.widgets.filter(w => !staticWidgets.includes(w) && !sortedDynamicWidgets.includes(w));
                 this.widgets = [...staticWidgets, ...sortedDynamicWidgets, ...remainingWidgets];
+                if (this.widgets_values && Array.isArray(this.widgets_values)) {
+                    this.widgets.forEach((w, idx) => {
+                        if (this.widgets_values[idx] !== undefined && this.widgets_values[idx] !== null) {
+                            w.value = this.widgets_values[idx];
+                        }
+                    });
+                }
                 this.setDirtyCanvas(true, true);
             };
         }

@@ -1484,6 +1484,7 @@
             const isProgress = lineText.includes('it/s') || lineText.includes('%|') || lineText.includes('s/it');
             const cleanText = lineText.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '').trim();
             if (!cleanText) return;
+            if (cleanText.includes('[WinError 10054]')) return;
             if (isProgress && lastTerminalLineEl && lastTerminalLineEl.parentNode === content) {
                 lastTerminalLineEl.innerHTML = cleanText;
             } else {
@@ -2796,8 +2797,11 @@
                         }
                     };
                     
-                    utilGroup.appendChild(btnMode); utilGroup.appendChild(btnReuse); utilGroup.appendChild(btnRand);
-                    seedContainer.appendChild(gap); seedContainer.appendChild(utilGroup); 
+                    utilGroup.appendChild(btnMode);
+                    //utilGroup.appendChild(btnReuse);
+                    utilGroup.appendChild(btnRand);
+                    seedContainer.appendChild(gap);
+                    seedContainer.appendChild(utilGroup); 
                     
                     group.appendChild(seedContainer);
                 } else {
